@@ -5,7 +5,9 @@ import { generateTodayPlan } from "@/lib/llm/planner";
 export async function GET() {
   return NextResponse.json({
     status: "ok",
-    suggestions: await listPlanSuggestions(),
+    data: {
+      suggestions: await listPlanSuggestions(),
+    },
   });
 }
 
@@ -16,9 +18,11 @@ export async function POST() {
 
     return NextResponse.json({
       status: "ok",
-      saved: true,
-      savedSuggestion,
-      plan,
+      data: {
+        saved: true,
+        savedSuggestion,
+        plan,
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown planner error";

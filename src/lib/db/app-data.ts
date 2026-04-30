@@ -1,5 +1,11 @@
 import { revalidatePath } from "next/cache";
 import {
+  foodEntryCreateSchema,
+  profileUpdateSchema,
+  type FoodEntryCreateInput,
+  type ProfileUpdateInput,
+} from "@/lib/api/schemas";
+import {
   calculateMacroTargets,
   calculateRemainingNutrition,
   sumNutrition,
@@ -90,16 +96,8 @@ export type FoodLogData = {
   isPersisted: boolean;
 };
 
-function splitCsv(value: FormDataEntryValue | null) {
-  return String(value ?? "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function toNumber(value: FormDataEntryValue | null, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+function formDataToRecord(formData: FormData) {
+  return Object.fromEntries(formData.entries());
 }
 
 export async function getProfileData(): Promise<ProfileData> {
@@ -216,29 +214,26 @@ export async function getFoodLogData(): Promise<FoodLogData> {
   };
 }
 
-export async function updateProfileFromForm(formData: FormData) {
+export async function updateProfile(input: ProfileUpdateInput) {
   const prisma = getPrisma();
 
   if (!prisma) {
-    return;
+    return getProfileData();
   }
 
   await ensureDemoUser(prisma);
-  const sex = String(formData.get("sex") ?? "unspecified") as Sex;
-  const activityLevel = String(formData.get("activityLevel") ?? "moderate") as ActivityLevel;
-  const metricDate = String(formData.get("metricDate") ?? todayLog.date);
 
   await prisma.userProfile.update({
     where: { id: demoUserId },
     data: {
-      displayName: String(formData.get("displayName") ?? sampleProfile.displayName),
-      birthYear: Math.round(toNumber(formData.get("birthYear"), sampleProfile.birthYear)),
-      sex: sexToDb[sex],
-      heightCm: toNumber(formData.get("heightCm"), sampleProfile.heightCm),
-      activityLevel: activityToDb[activityLevel],
-      trainingExperience: String(formData.get("trainingExperience") ?? ""),
-      defaultWakeTime: String(formData.get("defaultWakeTime") ?? ""),
-      defaultSleepTime: String(formData.get("defaultSleepTime") ?? ""),
+      displayName: input.displayName,
+      birthYear: input.birthYear,
+      sex: sexToDb[input.sex],
+      heightCm: input.heightCm,
+      activityLevel: activityToDb[input.activityLevel],
+      trainingExperience: input.trainingExperience,
+      defaultWakeTime: input.defaultWakeTime,
+      defaultSleepTime: input.defaultSleepTime,
     },
   });
 
@@ -246,90 +241,102 @@ export async function updateProfileFromForm(formData: FormData) {
     where: {
       userId_date: {
         userId: demoUserId,
-        date: new Date(metricDate),
+        date: new Date(input.metricDate),
       },
     },
     update: {
-      weightKg: toNumber(formData.get("weightKg"), latestBodyMetric.weightKg),
-      bodyFatPercent: toNumber(formData.get("bodyFatPercent"), latestBodyMetric.bodyFatPercent),
-      waistCm: toNumber(formData.get("waistCm"), latestBodyMetric.waistCm),
+      weightKg: input.weightKg,
+      bodyFatPercent: input.bodyFatPercent,
+      waistCm: input.waistCm,
     },
     create: {
       userId: demoUserId,
-      date: new Date(metricDate),
-      weightKg: toNumber(formData.get("weightKg"), latestBodyMetric.weightKg),
-      bodyFatPercent: toNumber(formData.get("bodyFatPercent"), latestBodyMetric.bodyFatPercent),
-      waistCm: toNumber(formData.get("waistCm"), latestBodyMetric.waistCm),
+      date: new Date(input.metricDate),
+      weightKg: input.weightKg,
+      bodyFatPercent: input.bodyFatPercent,
+      waistCm: input.waistCm,
     },
   });
 
   await prisma.dietPreference.upsert({
     where: { userId: demoUserId },
     update: {
-      dietStyle: String(formData.get("dietStyle") ?? ""),
-      allergies: splitCsv(formData.get("allergies")),
-      avoidedFoods: splitCsv(formData.get("avoidedFoods")),
-      preferredFoods: splitCsv(formData.get("preferredFoods")),
-      dislikedFoods: splitCsv(formData.get("dislikedFoods")),
-      budgetLevel: String(formData.get("budgetLevel") ?? ""),
-      maxCookingMinutes: Math.round(toNumber(formData.get("maxCookingMinutes"), 30)),
-      mealsPerDay: Math.round(toNumber(formData.get("mealsPerDay"), 3)),
-      notes: String(formData.get("notes") ?? ""),
+      dietStyle: input.dietStyle,
+      allergies: input.allergies,
+      avoidedFoods: input.avoidedFoods,
+      preferredFoods: input.preferredFoods,
+      dislikedFoods: input.dislikedFoods,
+      budgetLevel: input.budgetLevel,
+      maxCookingMinutes: input.maxCookingMinutes,
+      mealsPerDay: input.mealsPerDay,
+      notes: input.notes,
     },
     create: {
       userId: demoUserId,
-      dietStyle: String(formData.get("dietStyle") ?? ""),
-      allergies: splitCsv(formData.get("allergies")),
-      avoidedFoods: splitCsv(formData.get("avoidedFoods")),
-      preferredFoods: splitCsv(formData.get("preferredFoods")),
-      dislikedFoods: splitCsv(formData.get("dislikedFoods")),
-      budgetLevel: String(formData.get("budgetLevel") ?? ""),
-      maxCookingMinutes: Math.round(toNumber(formData.get("maxCookingMinutes"), 30)),
-      mealsPerDay: Math.round(toNumber(formData.get("mealsPerDay"), 3)),
-      notes: String(formData.get("notes") ?? ""),
+      dietStyle: input.dietStyle,
+      allergies: input.allergies,
+      avoidedFoods: input.avoidedFoods,
+      preferredFoods: input.preferredFoods,
+      dislikedFoods: input.dislikedFoods,
+      budgetLevel: input.budgetLevel,
+      maxCookingMinutes: input.maxCookingMinutes,
+      mealsPerDay: input.mealsPerDay,
+      notes: input.notes,
     },
   });
+
+  return getProfileData();
+}
+
+export async function updateProfileFromForm(formData: FormData) {
+  const input = profileUpdateSchema.parse(formDataToRecord(formData));
+  await updateProfile(input);
 
   revalidatePath("/");
   revalidatePath("/profile");
 }
 
-export async function createFoodEntryFromForm(formData: FormData) {
+export async function createFoodEntry(input: FoodEntryCreateInput) {
   const prisma = getPrisma();
 
   if (!prisma) {
-    return;
+    return getFoodLogData();
   }
 
   await ensureDemoUser(prisma);
-  const date = String(formData.get("date") ?? todayLog.date);
   const dailyLog = await prisma.dailyLog.upsert({
-    where: { userId_date: { userId: demoUserId, date: new Date(date) } },
+    where: { userId_date: { userId: demoUserId, date: new Date(input.date) } },
     update: {},
     create: {
       userId: demoUserId,
-      date: new Date(date),
+      date: new Date(input.date),
       trainingStatus: "REST",
     },
   });
-  const mealType = String(formData.get("mealType") ?? "snack") as keyof typeof mealToDb;
 
   await prisma.foodEntry.create({
     data: {
       userId: demoUserId,
       dailyLogId: dailyLog.id,
-      eatenAt: new Date(date),
-      mealType: mealToDb[mealType],
-      foodName: String(formData.get("foodName") ?? "Untitled food"),
-      quantity: toNumber(formData.get("quantity"), 1),
-      unit: String(formData.get("unit") ?? "serving"),
-      calories: toNumber(formData.get("calories")),
-      proteinG: toNumber(formData.get("proteinG")),
-      carbsG: toNumber(formData.get("carbsG")),
-      fatG: toNumber(formData.get("fatG")),
+      eatenAt: new Date(input.date),
+      mealType: mealToDb[input.mealType],
+      foodName: input.foodName,
+      quantity: input.quantity,
+      unit: input.unit,
+      calories: input.calories,
+      proteinG: input.proteinG,
+      carbsG: input.carbsG,
+      fatG: input.fatG,
       source: "manual",
     },
   });
+
+  return getFoodLogData();
+}
+
+export async function createFoodEntryFromForm(formData: FormData) {
+  const input = foodEntryCreateSchema.parse(formDataToRecord(formData));
+  await createFoodEntry(input);
 
   revalidatePath("/");
   revalidatePath("/food-log");
