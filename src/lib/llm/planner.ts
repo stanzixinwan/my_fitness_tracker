@@ -3,7 +3,7 @@ import { createPlannerProvider } from "@/lib/llm/providers";
 import { validatePlanSuggestion } from "@/lib/llm/schemas";
 
 export async function generateTodayPlan() {
-  const context = buildPlannerContext();
+  const context = await buildPlannerContext();
   const prompt = buildPlannerPrompt(context);
   const provider = createPlannerProvider();
   const rawSuggestion = await provider.generatePlan(prompt, context);

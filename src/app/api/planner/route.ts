@@ -5,14 +5,14 @@ import { generateTodayPlan } from "@/lib/llm/planner";
 export async function GET() {
   return NextResponse.json({
     status: "ok",
-    suggestions: listPlanSuggestions(),
+    suggestions: await listPlanSuggestions(),
   });
 }
 
 export async function POST() {
   try {
     const plan = await generateTodayPlan();
-    const savedSuggestion = savePlanSuggestion(plan);
+    const savedSuggestion = await savePlanSuggestion(plan);
 
     return NextResponse.json({
       status: "ok",

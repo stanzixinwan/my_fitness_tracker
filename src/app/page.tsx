@@ -1,18 +1,17 @@
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
+import { getFoodLogData, getProfileData } from "@/lib/db/app-data";
 import { completionPercent } from "@/lib/domain/nutrition";
 import { summarizeTraining } from "@/lib/domain/training";
-import {
-  activeGoal,
-  foodEntries,
-  getTodayNutritionSnapshot,
-  plannedTraining,
-  sampleProfile,
-  todayLog,
-} from "@/lib/sample-data";
+import { plannedTraining, todayLog } from "@/lib/sample-data";
 
-export default function Home() {
-  const { targets, consumed, remaining } = getTodayNutritionSnapshot();
+export default async function Home() {
+  const [profileData, foodLogData] = await Promise.all([
+    getProfileData(),
+    getFoodLogData(),
+  ]);
+  const { targets, consumed, remaining, foodEntries } = foodLogData;
+  const { profile, activeGoal } = profileData;
   const training = summarizeTraining(plannedTraining);
   const proteinCompletion = completionPercent(consumed.proteinG, targets.proteinG);
 
@@ -24,7 +23,7 @@ export default function Home() {
             Today
           </p>
           <h2 className="mt-3 text-4xl font-semibold">
-            {sampleProfile.displayName}, 今天按稳定规则追踪
+            {profile.displayName}, 今天按稳定规则追踪
           </h2>
           <p className="mt-4 max-w-2xl text-slate-300">
             目标是{activeGoal.title}。应用保存结构化资料和记录，LLM 只基于这些事实给出当天建议。

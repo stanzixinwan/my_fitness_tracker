@@ -1,9 +1,21 @@
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
-import { foodEntries, getTodayNutritionSnapshot } from "@/lib/sample-data";
+import { createFoodEntryFromForm, getFoodLogData } from "@/lib/db/app-data";
+import { todayLog } from "@/lib/sample-data";
 
-export default function FoodLogPage() {
-  const { targets, consumed, remaining } = getTodayNutritionSnapshot();
+const inputClass =
+  "mt-2 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-300";
+const labelClass = "text-sm font-medium text-slate-300";
+
+async function createFoodEntryAction(formData: FormData) {
+  "use server";
+
+  await createFoodEntryFromForm(formData);
+}
+
+export default async function FoodLogPage() {
+  const { foodEntries, targets, consumed, remaining, isPersisted } =
+    await getFoodLogData();
 
   return (
     <AppShell>
@@ -16,7 +28,7 @@ export default function FoodLogPage() {
             <h2 className="mt-3 text-3xl font-semibold">今日营养追踪</h2>
           </div>
           <p className="text-sm text-slate-400">
-            数据先由应用计算，LLM 不负责“记住”或重算核心指标。
+            {isPersisted ? "新增记录会写入数据库。" : "当前未配置数据库，新增记录不会持久保存。"}
           </p>
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -25,6 +37,62 @@ export default function FoodLogPage() {
           <StatCard label="Carbs / Fat" value={`${consumed.carbsG}g / ${consumed.fatG}g`} />
         </div>
       </section>
+
+      <form
+        action={createFoodEntryAction}
+        className="mt-8 rounded-[2rem] border border-emerald-300/20 bg-emerald-300/10 p-6"
+      >
+        <h3 className="text-xl font-semibold text-emerald-100">Add food entry</h3>
+        <div className="mt-4 grid gap-4 md:grid-cols-4">
+          <label className={labelClass}>
+            Date
+            <input name="date" type="date" defaultValue={todayLog.date} className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            Meal
+            <select name="mealType" defaultValue="snack" className={inputClass}>
+              <option value="breakfast">Breakfast</option>
+              <option value="lunch">Lunch</option>
+              <option value="dinner">Dinner</option>
+              <option value="snack">Snack</option>
+            </select>
+          </label>
+          <label className={`${labelClass} md:col-span-2`}>
+            Food
+            <input name="foodName" placeholder="Greek yogurt 200g" className={inputClass} required />
+          </label>
+          <label className={labelClass}>
+            Quantity
+            <input name="quantity" type="number" step="0.1" defaultValue="1" className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            Unit
+            <input name="unit" defaultValue="serving" className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            Calories
+            <input name="calories" type="number" step="1" defaultValue="0" className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            Protein
+            <input name="proteinG" type="number" step="0.1" defaultValue="0" className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            Carbs
+            <input name="carbsG" type="number" step="0.1" defaultValue="0" className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            Fat
+            <input name="fatG" type="number" step="0.1" defaultValue="0" className={inputClass} />
+          </label>
+        </div>
+        <button
+          type="submit"
+          className="mt-5 rounded-full bg-emerald-300 px-6 py-3 font-semibold text-slate-950 transition hover:bg-emerald-200"
+        >
+          Add entry
+        </button>
+      </form>
 
       <section className="mt-8 overflow-hidden rounded-[2rem] border border-white/10">
         <div className="grid grid-cols-5 bg-white/[0.06] px-5 py-3 text-sm text-slate-400">

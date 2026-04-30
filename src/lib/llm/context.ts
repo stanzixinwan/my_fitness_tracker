@@ -1,29 +1,30 @@
 import {
-  activeGoal,
-  dietPreference,
   foodEntries,
-  getTodayNutritionSnapshot,
-  latestBodyMetric,
   plannedTraining,
-  sampleProfile,
   todayLog,
 } from "@/lib/sample-data";
 import { summarizeTraining } from "@/lib/domain/training";
+import { getFoodLogData, getProfileData } from "@/lib/db/app-data";
 
-export type PlannerContext = ReturnType<typeof buildPlannerContext>;
+export type PlannerContext = Awaited<ReturnType<typeof buildPlannerContext>>;
 
-export function buildPlannerContext() {
-  const nutrition = getTodayNutritionSnapshot();
+export async function buildPlannerContext() {
+  const profileData = await getProfileData();
+  const foodLogData = await getFoodLogData();
 
   return {
-    profile: sampleProfile,
-    bodyMetric: latestBodyMetric,
-    goal: activeGoal,
-    dietPreference,
+    profile: profileData.profile,
+    bodyMetric: profileData.latestBodyMetric,
+    goal: profileData.activeGoal,
+    dietPreference: profileData.dietPreference,
     todayLog,
-    foodEntries,
+    foodEntries: foodLogData.foodEntries.length > 0 ? foodLogData.foodEntries : foodEntries,
     plannedTraining: summarizeTraining(plannedTraining),
-    nutrition,
+    nutrition: {
+      targets: foodLogData.targets,
+      consumed: foodLogData.consumed,
+      remaining: foodLogData.remaining,
+    },
   };
 }
 
