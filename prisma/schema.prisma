@@ -1,0 +1,204 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Sex {
+  MALE
+  FEMALE
+  OTHER
+  UNSPECIFIED
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum GoalType {
+  FAT_LOSS
+  MUSCLE_GAIN
+  MAINTENANCE
+  PERFORMANCE
+  RECOMPOSITION
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+  PRE_WORKOUT
+  POST_WORKOUT
+}
+
+enum TrainingStatus {
+  REST
+  PLANNED
+  COMPLETED
+  MISSED
+}
+
+enum SuggestionStatus {
+  DRAFT
+  ACCEPTED
+  REJECTED
+  COMPLETED
+}
+
+model UserProfile {
+  id                  String           @id @default(cuid())
+  displayName         String
+  birthYear           Int?
+  sex                 Sex              @default(UNSPECIFIED)
+  heightCm            Float
+  activityLevel       ActivityLevel    @default(MODERATE)
+  trainingExperience  String?
+  defaultWakeTime     String?
+  defaultSleepTime    String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  bodyMetrics         BodyMetric[]
+  goals               Goal[]
+  dietPreference      DietPreference?
+  dailyLogs           DailyLog[]
+  foodEntries         FoodEntry[]
+  trainingSessions    TrainingSession[]
+  planSuggestions     PlanSuggestion[]
+}
+
+model BodyMetric {
+  id             String      @id @default(cuid())
+  userId         String
+  date           DateTime
+  weightKg       Float
+  bodyFatPercent Float?
+  waistCm        Float?
+  note           String?
+  user           UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model Goal {
+  id                    String      @id @default(cuid())
+  userId                String
+  type                  GoalType
+  title                 String
+  targetWeightKg        Float?
+  targetBodyFatPercent  Float?
+  weeklyWeightDeltaKg   Float?
+  startDate             DateTime
+  endDate               DateTime?
+  priority              Int         @default(1)
+  isActive              Boolean     @default(true)
+  user                  UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+}
+
+model DietPreference {
+  id                    String      @id @default(cuid())
+  userId                String      @unique
+  dietStyle             String?
+  allergies             String[]    @default([])
+  avoidedFoods          String[]    @default([])
+  preferredFoods        String[]    @default([])
+  dislikedFoods         String[]    @default([])
+  budgetLevel           String?
+  maxCookingMinutes     Int?
+  mealsPerDay           Int         @default(3)
+  notes                 String?
+  user                  UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DailyLog {
+  id              String         @id @default(cuid())
+  userId          String
+  date            DateTime
+  sleepHours      Float?
+  stressLevel     Int?
+  scheduleNote    String?
+  trainingStatus  TrainingStatus @default(REST)
+  user            UserProfile    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodEntries     FoodEntry[]
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model FoodEntry {
+  id          String      @id @default(cuid())
+  userId      String
+  dailyLogId  String?
+  eatenAt     DateTime
+  mealType    MealType
+  foodName    String
+  quantity    Float
+  unit        String
+  calories    Float
+  proteinG    Float
+  carbsG      Float
+  fatG        Float
+  source      String?
+  user        UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyLog    DailyLog?   @relation(fields: [dailyLogId], references: [id], onDelete: SetNull)
+
+  @@index([userId, eatenAt])
+}
+
+model TrainingSession {
+  id          String        @id @default(cuid())
+  userId      String
+  date        DateTime
+  title       String
+  type        String
+  durationMin Int?
+  notes       String?
+  user        UserProfile   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sets        ExerciseSet[]
+
+  @@index([userId, date])
+}
+
+model ExerciseSet {
+  id                String          @id @default(cuid())
+  trainingSessionId String
+  exerciseName      String
+  setNumber         Int
+  reps              Int
+  weightKg          Float?
+  rpe               Float?
+  note              String?
+  trainingSession   TrainingSession @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
+
+  @@index([trainingSessionId, exerciseName])
+}
+
+model PlanSuggestion {
+  id             String           @id @default(cuid())
+  userId         String
+  date           DateTime
+  model          String
+  inputSummary   Json
+  suggestion     Json
+  status         SuggestionStatus @default(DRAFT)
+  userFeedback   String?
+  createdAt      DateTime         @default(now())
+  user           UserProfile      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
