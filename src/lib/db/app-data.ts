@@ -14,7 +14,7 @@ import {
   type Sex,
 } from "@/lib/domain/nutrition";
 import { demoUserId, ensureDemoUser } from "@/lib/db/demo-user";
-import { getPrisma } from "@/lib/db/prisma";
+import { getPrisma, resetPrisma } from "@/lib/db/prisma";
 import {
   activeGoal,
   dietPreference,
@@ -96,6 +96,24 @@ export type FoodLogData = {
   isPersisted: boolean;
 };
 
+function getFallbackProfileData(): ProfileData {
+  return {
+    profile: sampleProfile,
+    latestBodyMetric,
+    activeGoal,
+    dietPreference,
+    isPersisted: false,
+  };
+}
+
+function getFallbackFoodLogData(): FoodLogData {
+  return {
+    ...getTodayNutritionSnapshot(),
+    foodEntries,
+    isPersisted: false,
+  };
+}
+
 function formDataToRecord(formData: FormData) {
   return Object.fromEntries(formData.entries());
 }
@@ -104,114 +122,116 @@ export async function getProfileData(): Promise<ProfileData> {
   const prisma = getPrisma();
 
   if (!prisma) {
-    return {
-      profile: sampleProfile,
-      latestBodyMetric,
-      activeGoal,
-      dietPreference,
-      isPersisted: false,
-    };
+    return getFallbackProfileData();
   }
 
-  await ensureDemoUser(prisma);
-  const user = await prisma.userProfile.findUniqueOrThrow({
-    where: { id: demoUserId },
-    include: {
-      bodyMetrics: { orderBy: { date: "desc" }, take: 1 },
-      goals: { where: { isActive: true }, orderBy: { priority: "asc" }, take: 1 },
-      dietPreference: true,
-    },
-  });
-  const metric = user.bodyMetrics[0];
-  const goal = user.goals[0];
+  try {
+    await ensureDemoUser(prisma);
+    const user = await prisma.userProfile.findUniqueOrThrow({
+      where: { id: demoUserId },
+      include: {
+        bodyMetrics: { orderBy: { date: "desc" }, take: 1 },
+        goals: { where: { isActive: true }, orderBy: { priority: "asc" }, take: 1 },
+        dietPreference: true,
+      },
+    });
+    const metric = user.bodyMetrics[0];
+    const goal = user.goals[0];
 
-  return {
-    profile: {
-      id: user.id,
-      displayName: user.displayName,
-      sex: sexFromDb[user.sex] as Sex,
-      birthYear: user.birthYear ?? sampleProfile.birthYear,
-      heightCm: user.heightCm,
-      activityLevel: activityFromDb[user.activityLevel] as ActivityLevel,
-      trainingExperience: user.trainingExperience ?? "",
-      defaultWakeTime: user.defaultWakeTime ?? "",
-      defaultSleepTime: user.defaultSleepTime ?? "",
-    },
-    latestBodyMetric: {
-      date: metric.date.toISOString().slice(0, 10),
-      weightKg: metric.weightKg,
-      bodyFatPercent: metric.bodyFatPercent ?? latestBodyMetric.bodyFatPercent,
-      waistCm: metric.waistCm ?? latestBodyMetric.waistCm,
-    },
-    activeGoal: {
-      type: goalFromDb[goal.type] as GoalInput["type"],
-      title: goal.title,
-      targetWeightKg: goal.targetWeightKg ?? activeGoal.targetWeightKg,
-      weeklyWeightDeltaKg: goal.weeklyWeightDeltaKg ?? activeGoal.weeklyWeightDeltaKg,
-      endDate: goal.endDate?.toISOString().slice(0, 10) ?? activeGoal.endDate,
-    },
-    dietPreference: {
-      dietStyle: user.dietPreference?.dietStyle ?? "",
-      allergies: user.dietPreference?.allergies ?? [],
-      avoidedFoods: user.dietPreference?.avoidedFoods ?? [],
-      preferredFoods: user.dietPreference?.preferredFoods ?? [],
-      dislikedFoods: user.dietPreference?.dislikedFoods ?? [],
-      budgetLevel: user.dietPreference?.budgetLevel ?? "",
-      maxCookingMinutes: user.dietPreference?.maxCookingMinutes ?? 30,
-      mealsPerDay: user.dietPreference?.mealsPerDay ?? 3,
-      notes: user.dietPreference?.notes ?? "",
-    },
-    isPersisted: true,
-  };
+    return {
+      profile: {
+        id: user.id,
+        displayName: user.displayName,
+        sex: sexFromDb[user.sex] as Sex,
+        birthYear: user.birthYear ?? sampleProfile.birthYear,
+        heightCm: user.heightCm,
+        activityLevel: activityFromDb[user.activityLevel] as ActivityLevel,
+        trainingExperience: user.trainingExperience ?? "",
+        defaultWakeTime: user.defaultWakeTime ?? "",
+        defaultSleepTime: user.defaultSleepTime ?? "",
+      },
+      latestBodyMetric: {
+        date: metric.date.toISOString().slice(0, 10),
+        weightKg: metric.weightKg,
+        bodyFatPercent: metric.bodyFatPercent ?? latestBodyMetric.bodyFatPercent,
+        waistCm: metric.waistCm ?? latestBodyMetric.waistCm,
+      },
+      activeGoal: {
+        type: goalFromDb[goal.type] as GoalInput["type"],
+        title: goal.title,
+        targetWeightKg: goal.targetWeightKg ?? activeGoal.targetWeightKg,
+        weeklyWeightDeltaKg: goal.weeklyWeightDeltaKg ?? activeGoal.weeklyWeightDeltaKg,
+        endDate: goal.endDate?.toISOString().slice(0, 10) ?? activeGoal.endDate,
+      },
+      dietPreference: {
+        dietStyle: user.dietPreference?.dietStyle ?? "",
+        allergies: user.dietPreference?.allergies ?? [],
+        avoidedFoods: user.dietPreference?.avoidedFoods ?? [],
+        preferredFoods: user.dietPreference?.preferredFoods ?? [],
+        dislikedFoods: user.dietPreference?.dislikedFoods ?? [],
+        budgetLevel: user.dietPreference?.budgetLevel ?? "",
+        maxCookingMinutes: user.dietPreference?.maxCookingMinutes ?? 30,
+        mealsPerDay: user.dietPreference?.mealsPerDay ?? 3,
+        notes: user.dietPreference?.notes ?? "",
+      },
+      isPersisted: true,
+    };
+  } catch (error) {
+    console.warn("Falling back to sample profile data after database error.", error);
+    await resetPrisma();
+    return getFallbackProfileData();
+  }
 }
 
 export async function getFoodLogData(): Promise<FoodLogData> {
   const prisma = getPrisma();
 
   if (!prisma) {
-    return {
-      ...getTodayNutritionSnapshot(),
-      foodEntries,
-      isPersisted: false,
-    };
+    return getFallbackFoodLogData();
   }
 
-  const profileData = await getProfileData();
-  const rows = await prisma.foodEntry.findMany({
-    where: {
-      userId: demoUserId,
-      eatenAt: {
-        gte: new Date(`${todayLog.date}T00:00:00.000Z`),
-        lt: new Date(`${todayLog.date}T23:59:59.999Z`),
+  try {
+    const profileData = await getProfileData();
+    const rows = await prisma.foodEntry.findMany({
+      where: {
+        userId: demoUserId,
+        eatenAt: {
+          gte: new Date(`${todayLog.date}T00:00:00.000Z`),
+          lt: new Date(`${todayLog.date}T23:59:59.999Z`),
+        },
       },
-    },
-    orderBy: { eatenAt: "asc" },
-  });
-  const mappedEntries: SampleFoodEntry[] = rows.map((entry) => ({
-    id: entry.id,
-    mealType: mealFromDb[entry.mealType],
-    foodName: entry.foodName,
-    quantity: entry.quantity,
-    unit: entry.unit,
-    calories: entry.calories,
-    proteinG: entry.proteinG,
-    carbsG: entry.carbsG,
-    fatG: entry.fatG,
-  }));
-  const biometrics = {
-    ...profileData.profile,
-    weightKg: profileData.latestBodyMetric.weightKg,
-  };
-  const targets = calculateMacroTargets(biometrics, profileData.activeGoal);
-  const consumed = sumNutrition(mappedEntries);
+      orderBy: { eatenAt: "asc" },
+    });
+    const mappedEntries: SampleFoodEntry[] = rows.map((entry) => ({
+      id: entry.id,
+      mealType: mealFromDb[entry.mealType],
+      foodName: entry.foodName,
+      quantity: entry.quantity,
+      unit: entry.unit,
+      calories: entry.calories,
+      proteinG: entry.proteinG,
+      carbsG: entry.carbsG,
+      fatG: entry.fatG,
+    }));
+    const biometrics = {
+      ...profileData.profile,
+      weightKg: profileData.latestBodyMetric.weightKg,
+    };
+    const targets = calculateMacroTargets(biometrics, profileData.activeGoal);
+    const consumed = sumNutrition(mappedEntries);
 
-  return {
-    foodEntries: mappedEntries,
-    targets,
-    consumed,
-    remaining: calculateRemainingNutrition(targets, consumed),
-    isPersisted: true,
-  };
+    return {
+      foodEntries: mappedEntries,
+      targets,
+      consumed,
+      remaining: calculateRemainingNutrition(targets, consumed),
+      isPersisted: profileData.isPersisted,
+    };
+  } catch (error) {
+    console.warn("Falling back to sample food log data after database error.", error);
+    await resetPrisma();
+    return getFallbackFoodLogData();
+  }
 }
 
 export async function updateProfile(input: ProfileUpdateInput) {

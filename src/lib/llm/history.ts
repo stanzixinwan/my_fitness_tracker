@@ -1,5 +1,5 @@
 import { demoUserId, ensureDemoUser } from "@/lib/db/demo-user";
-import { getPrisma } from "@/lib/db/prisma";
+import { getPrisma, resetPrisma } from "@/lib/db/prisma";
 import type { PlanSuggestion } from "@/lib/llm/schemas";
 
 export type StoredPlanSuggestion = {
@@ -26,29 +26,34 @@ export async function savePlanSuggestion(input: {
       : new Date().toISOString().slice(0, 10);
 
   if (prisma) {
-    await ensureDemoUser(prisma);
-    const inputSummaryJson = JSON.parse(JSON.stringify(input.inputSummary));
-    const suggestionJson = JSON.parse(JSON.stringify(input.suggestion));
-    const saved = await prisma.planSuggestion.create({
-      data: {
-        userId: demoUserId,
-        date: new Date(date),
-        model: input.model,
-        inputSummary: inputSummaryJson,
-        suggestion: suggestionJson,
-        status: "DRAFT",
-      },
-    });
+    try {
+      await ensureDemoUser(prisma);
+      const inputSummaryJson = JSON.parse(JSON.stringify(input.inputSummary));
+      const suggestionJson = JSON.parse(JSON.stringify(input.suggestion));
+      const saved = await prisma.planSuggestion.create({
+        data: {
+          userId: demoUserId,
+          date: new Date(date),
+          model: input.model,
+          inputSummary: inputSummaryJson,
+          suggestion: suggestionJson,
+          status: "DRAFT",
+        },
+      });
 
-    return {
-      id: saved.id,
-      date: saved.date.toISOString().slice(0, 10),
-      model: saved.model,
-      inputSummary: saved.inputSummary as Record<string, unknown>,
-      suggestion: saved.suggestion as PlanSuggestion,
-      status: "draft",
-      createdAt: saved.createdAt.toISOString(),
-    };
+      return {
+        id: saved.id,
+        date: saved.date.toISOString().slice(0, 10),
+        model: saved.model,
+        inputSummary: saved.inputSummary as Record<string, unknown>,
+        suggestion: saved.suggestion as PlanSuggestion,
+        status: "draft",
+        createdAt: saved.createdAt.toISOString(),
+      };
+    } catch (error) {
+      console.warn("Saving plan suggestion in memory after database error.", error);
+      await resetPrisma();
+    }
   }
 
   const saved: StoredPlanSuggestion = {
@@ -69,22 +74,27 @@ export async function listPlanSuggestions() {
   const prisma = getPrisma();
 
   if (prisma) {
-    await ensureDemoUser(prisma);
-    const rows = await prisma.planSuggestion.findMany({
-      where: { userId: demoUserId },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    });
+    try {
+      await ensureDemoUser(prisma);
+      const rows = await prisma.planSuggestion.findMany({
+        where: { userId: demoUserId },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      });
 
-    return rows.map((row) => ({
-      id: row.id,
-      date: row.date.toISOString().slice(0, 10),
-      model: row.model,
-      inputSummary: row.inputSummary as Record<string, unknown>,
-      suggestion: row.suggestion as PlanSuggestion,
-      status: row.status.toLowerCase() as StoredPlanSuggestion["status"],
-      createdAt: row.createdAt.toISOString(),
-    }));
+      return rows.map((row) => ({
+        id: row.id,
+        date: row.date.toISOString().slice(0, 10),
+        model: row.model,
+        inputSummary: row.inputSummary as Record<string, unknown>,
+        suggestion: row.suggestion as PlanSuggestion,
+        status: row.status.toLowerCase() as StoredPlanSuggestion["status"],
+        createdAt: row.createdAt.toISOString(),
+      }));
+    } catch (error) {
+      console.warn("Reading in-memory plan suggestions after database error.", error);
+      await resetPrisma();
+    }
   }
 
   return planHistory;
