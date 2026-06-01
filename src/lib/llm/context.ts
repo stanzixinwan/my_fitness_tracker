@@ -30,9 +30,9 @@ export async function buildPlannerContext() {
 
 export function buildPlannerPrompt(context: PlannerContext) {
   return [
-    "你是一个谨慎的健身饮食规划助手。你不能依赖聊天记忆，只能使用下面的结构化资料。",
-    "请生成今天剩余餐次的饮食建议，必须遵守过敏、禁忌、目标热量和宏量营养素。",
-    "输出必须是 JSON，不要输出 markdown。",
+    "You are a careful fitness and meal planning assistant. You must not rely on chat memory; use only the structured data below.",
+    "Generate meal suggestions for the remaining meals today. Respect allergies, avoided foods, calorie targets, and macro targets.",
+    "Output must be JSON only. Do not output markdown.",
     "",
     JSON.stringify(context, null, 2),
     "",

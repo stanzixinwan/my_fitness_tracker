@@ -12,10 +12,10 @@ export default async function PlannerPage() {
         <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
           Planner
         </p>
-        <h2 className="mt-3 text-3xl font-semibold">今日饮食建议</h2>
+        <h2 className="mt-3 text-3xl font-semibold">Today meal plan</h2>
         <p className="mt-4 max-w-3xl text-slate-300">
-          点击按钮后，API 会读取结构化资料、今日记录和剩余营养目标，生成 JSON 建议并保存到
-          {latest ? "建议历史。" : "建议历史。当前还没有保存的计划。"}
+          After you click the button, the API reads structured profile data, today&apos;s logs, and remaining nutrition targets, then generates and saves a JSON plan to
+          {latest ? " suggestion history." : " suggestion history. No saved plans yet."}
         </p>
         <GeneratePlanButton />
       </section>
@@ -72,7 +72,7 @@ export default async function PlannerPage() {
         </section>
       ) : (
         <section className="mt-8 rounded-[2rem] border border-dashed border-white/20 p-8 text-slate-400">
-          还没有保存的饮食建议。点击上方按钮生成第一条。
+          No saved meal suggestions yet. Use the button above to generate your first plan.
         </section>
       )}
     </AppShell>

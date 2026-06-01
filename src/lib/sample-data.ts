@@ -24,7 +24,7 @@ export const sampleProfile = {
   birthYear: 1996,
   heightCm: 178,
   activityLevel: "moderate" as ActivityLevel,
-  trainingExperience: "稳定力量训练 2 年，每周 4 次，偏好午后或晚上训练。",
+  trainingExperience: "Consistent strength training for 2 years, 4 sessions per week, prefers afternoon or evening workouts.",
   defaultWakeTime: "08:00",
   defaultSleepTime: "00:00",
 };
@@ -42,29 +42,29 @@ export const activeGoal: GoalInput & {
   endDate: string;
 } = {
   type: "recomposition",
-  title: "慢速减脂并维持力量表现",
+  title: "Slow fat loss while maintaining strength performance",
   targetWeightKg: 75,
   weeklyWeightDeltaKg: -0.25,
   endDate: "2026-08-01",
 };
 
 export const dietPreference = {
-  dietStyle: "高蛋白、易准备、不过度限制碳水",
-  allergies: ["无已知过敏"],
-  avoidedFoods: ["油炸食品", "含糖饮料"],
-  preferredFoods: ["鸡胸肉", "鸡蛋", "希腊酸奶", "米饭", "牛肉", "西兰花"],
-  dislikedFoods: ["芹菜"],
-  budgetLevel: "中等",
+  dietStyle: "High protein, easy to prepare, carbs not overly restricted",
+  allergies: ["No known allergies"],
+  avoidedFoods: ["Fried food", "Sugary drinks"],
+  preferredFoods: ["Chicken breast", "Eggs", "Greek yogurt", "Rice", "Beef", "Broccoli"],
+  dislikedFoods: ["Celery"],
+  budgetLevel: "Medium",
   maxCookingMinutes: 30,
   mealsPerDay: 3,
-  notes: "希望建议稳定、可重复执行，不要每天因为语气变化而大幅波动。",
+  notes: "Prefer stable, repeatable advice that does not swing wildly with conversational tone day to day.",
 };
 
 export const todayLog = {
   date: "2026-04-30",
   sleepHours: 7,
   stressLevel: 3,
-  scheduleNote: "下午 6 点力量训练，晚上有 30 分钟做饭时间。",
+  scheduleNote: "Strength training at 6 PM, 30 minutes to cook in the evening.",
   trainingStatus: "planned",
 };
 
@@ -72,9 +72,9 @@ export const foodEntries: SampleFoodEntry[] = [
   {
     id: "breakfast-1",
     mealType: "breakfast",
-    foodName: "燕麦 60g + 牛奶 250ml + 鸡蛋 2 个",
+    foodName: "Oats 60g + milk 250ml + 2 eggs",
     quantity: 1,
-    unit: "份",
+    unit: "serving",
     calories: 560,
     proteinG: 31,
     carbsG: 62,
@@ -83,9 +83,9 @@ export const foodEntries: SampleFoodEntry[] = [
   {
     id: "lunch-1",
     mealType: "lunch",
-    foodName: "鸡胸肉饭碗",
+    foodName: "Chicken breast rice bowl",
     quantity: 1,
-    unit: "份",
+    unit: "serving",
     calories: 720,
     proteinG: 52,
     carbsG: 86,

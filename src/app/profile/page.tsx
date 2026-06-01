@@ -22,9 +22,9 @@ export default async function ProfilePage() {
           <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
             Profile
           </p>
-          <h2 className="mt-3 text-3xl font-semibold">身体数据</h2>
+          <h2 className="mt-3 text-3xl font-semibold">Body metrics</h2>
           <p className="mt-3 text-sm text-slate-400">
-            {isPersisted ? "已连接数据库，提交后会写入 Prisma。" : "当前未配置数据库，表单可预览但不会持久保存。"}
+            {isPersisted ? "Database connected; submissions are saved via Prisma." : "Database not configured; forms work for preview but will not persist."}
           </p>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -94,7 +94,7 @@ export default async function ProfilePage() {
           <p className="text-sm uppercase tracking-[0.3em] text-sky-300">Goals</p>
           <h2 className="mt-3 text-3xl font-semibold">{activeGoal.title}</h2>
           <p className="mt-4 text-slate-300">
-            目标体重 {activeGoal.targetWeightKg} kg，截止 {activeGoal.endDate}
+            Target weight {activeGoal.targetWeightKg} kg by {activeGoal.endDate}
           </p>
 
           <div className="mt-6 grid gap-4">

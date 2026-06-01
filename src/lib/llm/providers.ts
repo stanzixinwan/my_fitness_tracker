@@ -22,33 +22,33 @@ export class LocalRuleProvider implements LlmProvider {
 
     return {
       summary:
-        "基于今天已吃内容和晚间训练安排，优先补足蛋白质，并把主要碳水放在训练后晚餐。",
+        "Based on today's intake and evening training, prioritize protein and place most carbs in the post-workout dinner.",
       meals: [
         {
           mealType: "dinner",
-          title: "训练后高蛋白米饭碗",
-          foods: ["瘦牛肉或鸡胸肉 180g", "熟米饭 220g", "西兰花 200g", "橄榄油 8g"],
+          title: "Post-workout high-protein rice bowl",
+          foods: ["Lean beef or chicken breast 180g", "Cooked rice 220g", "Broccoli 200g", "Olive oil 8g"],
           calories: dinnerCalories,
           proteinG: dinnerProtein,
           carbsG: dinnerCarbs,
           fatG: dinnerFat,
           prepMinutes: Math.min(context.dietPreference.maxCookingMinutes ?? 30, 30),
-          reason: "晚餐承担剩余营养的大部分，训练后补碳水更利于恢复。",
+          reason: "Dinner covers most of the remaining nutrition; post-workout carbs support recovery.",
         },
         {
           mealType: "snack",
-          title: "睡前轻量蛋白加餐",
-          foods: ["希腊酸奶 200g", "蓝莓 80g"],
+          title: "Light bedtime protein snack",
+          foods: ["Greek yogurt 200g", "Blueberries 80g"],
           calories: snackCalories,
           proteinG: snackProtein,
           carbsG: snackCarbs,
           fatG: snackFat,
           prepMinutes: 5,
-          reason: "用低准备成本补足蛋白质，避免晚间额外烹饪负担。",
+          reason: "Low-prep way to top up protein without extra evening cooking.",
         },
       ],
-      swaps: ["米饭可以替换为土豆或全麦意面。", "鸡胸肉可以替换为虾仁、瘦牛肉或豆腐。"],
-      cautions: ["这是基于示例数据的规划，不替代医生或注册营养师建议。"],
+      swaps: ["Rice can be swapped for potatoes or whole-wheat pasta.", "Chicken breast can be swapped for shrimp, lean beef, or tofu."],
+      cautions: ["This plan is based on sample data and does not replace advice from a doctor or registered dietitian."],
       total: {
         calories: remaining.calories,
         proteinG: remaining.proteinG,

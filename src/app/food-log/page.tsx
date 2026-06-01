@@ -25,10 +25,10 @@ export default async function FoodLogPage() {
             <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
               Food Log
             </p>
-            <h2 className="mt-3 text-3xl font-semibold">今日营养追踪</h2>
+            <h2 className="mt-3 text-3xl font-semibold">Today nutrition</h2>
           </div>
           <p className="text-sm text-slate-400">
-            {isPersisted ? "新增记录会写入数据库。" : "当前未配置数据库，新增记录不会持久保存。"}
+            {isPersisted ? "New entries are saved to the database." : "Database not configured; new entries will not persist."}
           </p>
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
