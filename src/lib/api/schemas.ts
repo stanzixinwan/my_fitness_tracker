@@ -58,6 +58,7 @@ export const foodEntryCreateSchema = z.object({
   proteinG: z.coerce.number().min(0),
   carbsG: z.coerce.number().min(0),
   fatG: z.coerce.number().min(0),
+  source: z.string().trim().min(1).optional(),
 });
 
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;

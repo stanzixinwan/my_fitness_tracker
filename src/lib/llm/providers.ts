@@ -1,3 +1,5 @@
+import { completeJson } from "@/lib/llm/client";
+import { getLlmStatus } from "@/lib/llm/config";
 import type { PlannerContext } from "@/lib/llm/context";
 import type { PlanSuggestion } from "@/lib/llm/schemas";
 
@@ -59,63 +61,24 @@ export class LocalRuleProvider implements LlmProvider {
   }
 }
 
-export class OpenAiCompatibleProvider implements LlmProvider {
-  name = "openai-compatible-provider";
-
-  constructor(
-    private readonly apiKey: string,
-    private readonly baseUrl = "https://api.openai.com/v1",
-    private readonly model = "gpt-4o-mini",
-  ) {}
+export class RemoteJsonProvider implements LlmProvider {
+  constructor(public readonly name: string) {}
 
   async generatePlan(prompt: string): Promise<unknown> {
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: this.model,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content:
-              "Return strict JSON only. Do not invent persistent user facts beyond the provided context.",
-          },
-          { role: "user", content: prompt },
-        ],
-      }),
+    return completeJson({
+      system:
+        "Return strict JSON only. Do not invent persistent user facts beyond the provided context.",
+      prompt,
     });
-
-    if (!response.ok) {
-      throw new Error(`LLM request failed with status ${response.status}`);
-    }
-
-    const payload = (await response.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const content = payload.choices?.[0]?.message?.content;
-
-    if (!content) {
-      throw new Error("LLM response did not include content");
-    }
-
-    return JSON.parse(content);
   }
 }
 
 export function createPlannerProvider(): LlmProvider {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const status = getLlmStatus();
 
-  if (!apiKey) {
+  if (status.provider === "local") {
     return new LocalRuleProvider();
   }
 
-  return new OpenAiCompatibleProvider(
-    apiKey,
-    process.env.OPENAI_BASE_URL,
-    process.env.OPENAI_MODEL,
-  );
+  return new RemoteJsonProvider(`${status.provider}:${status.model}`);
 }

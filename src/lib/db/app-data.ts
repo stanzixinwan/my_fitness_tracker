@@ -347,7 +347,7 @@ export async function createFoodEntry(input: FoodEntryCreateInput) {
       proteinG: input.proteinG,
       carbsG: input.carbsG,
       fatG: input.fatG,
-      source: "manual",
+      source: input.source ?? "manual",
     },
   });
 

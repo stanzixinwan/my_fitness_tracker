@@ -4,6 +4,7 @@ import type {
   ProfileUpdateInput,
 } from "@/lib/api/schemas";
 import type { FoodLogData, ProfileData } from "@/lib/db/app-data";
+import type { FoodScanResult } from "@/lib/llm/food-scan";
 import type { StoredPlanSuggestion } from "@/lib/llm/history";
 
 export type GetProfileResponse = ApiResponse<ProfileData>;
@@ -26,4 +27,9 @@ export type CreatePlannerResponse = ApiResponse<{
     inputSummary: Record<string, unknown>;
     suggestion: StoredPlanSuggestion["suggestion"];
   };
+}>;
+
+export type CreateFoodScanResponse = ApiResponse<{
+  model: string;
+  result: FoodScanResult;
 }>;

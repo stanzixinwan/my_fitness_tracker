@@ -1,10 +1,12 @@
 import { AppShell } from "@/components/AppShell";
 import { listPlanSuggestions } from "@/lib/llm/history";
 import { GeneratePlanButton } from "@/app/planner/GeneratePlanButton";
+import { getLlmStatus } from "@/lib/llm/config";
 
 export default async function PlannerPage() {
   const suggestions = await listPlanSuggestions();
   const latest = suggestions[0];
+  const llm = getLlmStatus();
 
   return (
     <AppShell>
@@ -16,6 +18,9 @@ export default async function PlannerPage() {
         <p className="mt-4 max-w-3xl text-slate-300">
           After you click the button, the API reads structured profile data, today&apos;s logs, and remaining nutrition targets, then generates and saves a JSON plan to
           {latest ? " suggestion history." : " suggestion history. No saved plans yet."}
+        </p>
+        <p className="mt-3 text-sm text-slate-400">
+          LLM: {llm.provider === "local" ? "local fallback (set GEMINI_API_KEY or OPENAI_API_KEY to use a real model)" : `${llm.provider} / ${llm.model}`}
         </p>
         <GeneratePlanButton />
       </section>

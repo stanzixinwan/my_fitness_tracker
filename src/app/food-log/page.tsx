@@ -1,3 +1,4 @@
+import { FoodScanCard } from "@/app/food-log/FoodScanCard";
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { createFoodEntryFromForm, getFoodLogData } from "@/lib/db/app-data";
@@ -37,6 +38,8 @@ export default async function FoodLogPage() {
           <StatCard label="Carbs / Fat" value={`${consumed.carbsG}g / ${consumed.fatG}g`} />
         </div>
       </section>
+
+      <FoodScanCard />
 
       <form
         action={createFoodEntryAction}
