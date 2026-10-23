@@ -51,13 +51,6 @@ enum TrainingStatus {
   MISSED
 }
 
-enum SuggestionStatus {
-  DRAFT
-  ACCEPTED
-  REJECTED
-  COMPLETED
-}
-
 model UserProfile {
   id                  String           @id @default(cuid())
   displayName         String
@@ -76,7 +69,6 @@ model UserProfile {
   dailyLogs           DailyLog[]
   foodEntries         FoodEntry[]
   trainingSessions    TrainingSession[]
-  planSuggestions     PlanSuggestion[]
 }
 
 model BodyMetric {
@@ -186,19 +178,4 @@ model ExerciseSet {
   trainingSession   TrainingSession @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
 
   @@index([trainingSessionId, exerciseName])
-}
-
-model PlanSuggestion {
-  id             String           @id @default(cuid())
-  userId         String
-  date           DateTime
-  model          String
-  inputSummary   Json
-  suggestion     Json
-  status         SuggestionStatus @default(DRAFT)
-  userFeedback   String?
-  createdAt      DateTime         @default(now())
-  user           UserProfile      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, date])
 }

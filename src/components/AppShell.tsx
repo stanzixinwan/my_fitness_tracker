@@ -6,7 +6,6 @@ const navItems = [
   { href: "/profile", label: "Profile" },
   { href: "/food-log", label: "Food Log" },
   { href: "/training-log", label: "Training" },
-  { href: "/planner", label: "Planner" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

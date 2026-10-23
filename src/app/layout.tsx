@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "My Fitness Tracker",
-  description: "Stable fitness, nutrition, and LLM planning memory.",
+  description: "Personal body metrics, training logs, and nutrition tracking.",
 };
 
 export default function RootLayout({

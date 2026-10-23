@@ -14,6 +14,18 @@ export function isDatabaseConfigured() {
   return Boolean(databaseUrl && !databaseUrl.startsWith(placeholderDatabaseUrl));
 }
 
+export function requirePrisma() {
+  const prisma = getPrisma();
+
+  if (!prisma) {
+    throw new Error(
+      "Database is not configured. Set DATABASE_URL in .env and restart the dev server.",
+    );
+  }
+
+  return prisma;
+}
+
 export function getPrisma() {
   const databaseUrl = process.env.DATABASE_URL;
 
@@ -33,10 +45,4 @@ export function getPrisma() {
   }
 
   return globalForPrisma.prisma;
-}
-
-export async function resetPrisma() {
-  await globalForPrisma.prisma?.$disconnect();
-  globalForPrisma.prisma = undefined;
-  globalForPrisma.databaseUrl = undefined;
 }
