@@ -55,6 +55,8 @@ model UserProfile {
   id                  String           @id @default(cuid())
   displayName         String
   birthYear           Int?
+  birthDate           DateTime?
+  injuryHistory       String?
   sex                 Sex              @default(UNSPECIFIED)
   heightCm            Float
   activityLevel       ActivityLevel    @default(MODERATE)
@@ -75,10 +77,17 @@ model BodyMetric {
   id             String      @id @default(cuid())
   userId         String
   date           DateTime
-  weightKg       Float
-  bodyFatPercent Float?
-  waistCm        Float?
-  note           String?
+  weightKg         Float
+  bodyFatPercent   Float?
+  leanBodyMassKg   Float?
+  waistCm          Float?
+  chestCm          Float?
+  hipCm            Float?
+  armCm            Float?
+  thighCm          Float?
+  restingHeartRate Int?
+  source           String?
+  note             String?
   user           UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])

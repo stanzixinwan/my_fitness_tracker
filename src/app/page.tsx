@@ -22,7 +22,8 @@ export default async function Home() {
 
   const { profileData, foodLogData, trainingData } = result.data;
   const { targets, consumed, remaining, foodEntries } = foodLogData;
-  const { profile, activeGoal, hasProfile } = profileData;
+  const { profile, activeGoal, hasProfile, recentWeightAverageKg, latestBodyMetric } =
+    profileData;
   const session = trainingData.sessions[0];
   const proteinCompletion =
     targets == null ? null : completionPercent(consumed.proteinG, targets.proteinG);
@@ -82,6 +83,11 @@ export default async function Home() {
                 {foodEntries.length === 1 ? "entry" : "entries"}
               </li>
               <li>Training sessions: {trainingData.sessions.length}</li>
+              <li>
+                7-entry weight average:{" "}
+                {recentWeightAverageKg == null ? "—" : `${recentWeightAverageKg} kg`}
+              </li>
+              <li>Latest weight: {latestBodyMetric.weightKg ?? "—"} kg</li>
             </ul>
           </aside>
         </section>

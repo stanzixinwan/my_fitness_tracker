@@ -24,9 +24,32 @@ const optionalTextSchema = z.preprocess(
   z.string(),
 );
 
+const optionalDateSchema = z.preprocess((value) => {
+  if (value === "" || value == null) {
+    return null;
+  }
+
+  return value;
+}, dateStringSchema.nullable());
+
+function optionalNumber(min: number, max?: number) {
+  const numberSchema = max == null ? z.number().min(min) : z.number().min(min).max(max);
+
+  return z.preprocess((value) => {
+    if (value === "" || value == null) {
+      return null;
+    }
+
+    const parsed = typeof value === "number" ? value : Number(value);
+
+    return Number.isFinite(parsed) ? parsed : value;
+  }, numberSchema.nullable());
+}
+
 export const profileUpdateSchema = z.object({
   displayName: z.string().trim().min(1),
-  birthYear: z.coerce.number().int().min(1900).max(2100),
+  birthDate: dateStringSchema,
+  injuryHistory: optionalTextSchema,
   sex: z.enum(["male", "female", "other", "unspecified"]),
   heightCm: z.coerce.number().positive(),
   activityLevel: z.enum(["sedentary", "light", "moderate", "active", "very_active"]),
@@ -35,8 +58,17 @@ export const profileUpdateSchema = z.object({
   defaultSleepTime: optionalTextSchema,
   metricDate: dateStringSchema,
   weightKg: z.coerce.number().positive(),
-  bodyFatPercent: z.coerce.number().min(0).max(80),
-  waistCm: z.coerce.number().positive(),
+  bodyFatPercent: optionalNumber(0, 80),
+  waistCm: optionalNumber(1),
+  chestCm: optionalNumber(1),
+  hipCm: optionalNumber(1),
+  armCm: optionalNumber(1),
+  thighCm: optionalNumber(1),
+  restingHeartRate: optionalNumber(1, 220),
+  goalType: z.enum(["fat_loss", "muscle_gain", "maintenance"]),
+  goalTitle: z.string().trim().min(1),
+  targetWeightKg: optionalNumber(1),
+  goalEndDate: optionalDateSchema,
   dietStyle: optionalTextSchema,
   allergies: csvListSchema,
   avoidedFoods: csvListSchema,
