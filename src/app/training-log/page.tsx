@@ -56,6 +56,7 @@ export default async function TrainingLogPage() {
                   <span className="font-medium text-white">{exercise.exerciseName}</span>
                   <span className="text-sm text-slate-300">
                     {exercise.sets} x {exercise.repsMin}-{exercise.repsMax} @ RPE {exercise.intensityValue}
+                    {exercise.targetWeightKg == null ? "" : `, target ${exercise.targetWeightKg} kg`}
                   </span>
                 </div>
               ))}

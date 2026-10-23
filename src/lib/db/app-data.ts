@@ -191,6 +191,7 @@ export type PlannedExerciseOption = {
   repsMin: number;
   repsMax: number;
   intensityValue: number;
+  targetWeightKg: number | null;
 };
 
 export type TrainingLogData = {
@@ -432,6 +433,7 @@ export async function getTrainingLogData(date = localDateString()): Promise<Trai
       repsMin: exercise.repsMin,
       repsMax: exercise.repsMax,
       intensityValue: exercise.intensityValue,
+      targetWeightKg: exercise.targetWeightKg,
     })),
     completionPercent: sessionCompletionPercent(loggedSetCount, plannedSetCount),
     sessions: rows.map((session) => {

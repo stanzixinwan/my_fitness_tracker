@@ -88,6 +88,7 @@ model UserProfile {
   nutritionTargets    NutritionTarget[]
   programs            Program[]
   plannedSessions     PlannedSession[]
+  adjustmentLogs      AdjustmentLog[]
 }
 
 model BodyMetric {
@@ -272,8 +273,24 @@ model PlannedExercise {
   intensityType    String
   intensityValue   Float
   restSeconds      Int
+  targetWeightKg   Float?
   session          PlannedSession @relation(fields: [plannedSessionId], references: [id], onDelete: Cascade)
   loggedSets       ExerciseSet[]
 
   @@index([plannedSessionId, sortOrder])
+}
+
+model AdjustmentLog {
+  id          String      @id @default(cuid())
+  userId      String
+  date        DateTime
+  reason      String
+  field       String
+  subject     String
+  beforeValue String
+  afterValue  String
+  createdAt   DateTime    @default(now())
+  user        UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
