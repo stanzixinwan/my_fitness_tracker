@@ -209,7 +209,9 @@ model ExerciseSet {
   weightKg          Float?
   rpe               Float?
   note              String?
+  plannedExerciseId String?
   trainingSession   TrainingSession @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
+  plannedExercise   PlannedExercise? @relation(fields: [plannedExerciseId], references: [id], onDelete: SetNull)
 
   @@index([trainingSessionId, exerciseName])
 }
@@ -271,6 +273,7 @@ model PlannedExercise {
   intensityValue   Float
   restSeconds      Int
   session          PlannedSession @relation(fields: [plannedSessionId], references: [id], onDelete: Cascade)
+  loggedSets       ExerciseSet[]
 
   @@index([plannedSessionId, sortOrder])
 }

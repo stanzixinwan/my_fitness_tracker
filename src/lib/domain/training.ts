@@ -24,6 +24,14 @@ export function calculateE1rm(weightKg: number, reps: number) {
   return Math.round(weightKg * (1 + reps / 30) * 10) / 10;
 }
 
+export function sessionCompletionPercent(loggedSets: number, plannedSets: number) {
+  if (plannedSets <= 0) {
+    return null;
+  }
+
+  return Math.min(100, Math.round((loggedSets / plannedSets) * 100));
+}
+
 export function calculateTrainingVolume(session: TrainingSessionInput) {
   return session.sets.reduce((total, set) => {
     return total + set.reps * (set.weightKg ?? 0);

@@ -22,6 +22,7 @@ import {
 } from "@/lib/domain/nutrition";
 import {
   calculateE1rm,
+  sessionCompletionPercent,
   summarizeTraining,
   type ExerciseSetInput,
   type TrainingSessionInput,
@@ -183,10 +184,21 @@ export type ExerciseOption = {
   equipment: string;
 };
 
+export type PlannedExerciseOption = {
+  id: string;
+  exerciseName: string;
+  sets: number;
+  repsMin: number;
+  repsMax: number;
+  intensityValue: number;
+};
+
 export type TrainingLogData = {
   date: string;
   sessions: TrainingSessionRecord[];
   exercises: ExerciseOption[];
+  plannedExercises: PlannedExerciseOption[];
+  completionPercent: number | null;
 };
 
 const emptyDietPreference: DietPreferenceFields = {
@@ -384,7 +396,7 @@ export async function getFoodLogData(date = localDateString()): Promise<FoodLogD
 export async function getTrainingLogData(date = localDateString()): Promise<TrainingLogData> {
   const prisma = requirePrisma();
   const range = localDayRange(date);
-  const [rows, exercises] = await Promise.all([
+  const [rows, exercises, planned] = await Promise.all([
     prisma.trainingSession.findMany({
     where: {
       userId: localUserId,
@@ -396,7 +408,14 @@ export async function getTrainingLogData(date = localDateString()): Promise<Trai
     orderBy: { date: "asc" },
     }),
     prisma.exercise.findMany({ orderBy: { name: "asc" } }),
+    prisma.plannedSession.findFirst({
+      where: { userId: localUserId, date: range },
+      include: { exercises: { orderBy: { sortOrder: "asc" } } },
+    }),
   ]);
+  const plannedExercises = planned?.exercises ?? [];
+  const plannedSetCount = plannedExercises.reduce((total, exercise) => total + exercise.sets, 0);
+  const loggedSetCount = rows.reduce((total, session) => total + session.sets.length, 0);
 
   return {
     date,
@@ -406,6 +425,15 @@ export async function getTrainingLogData(date = localDateString()): Promise<Trai
       movementPattern: exercise.movementPattern,
       equipment: exercise.equipment,
     })),
+    plannedExercises: plannedExercises.map((exercise) => ({
+      id: exercise.id,
+      exerciseName: exercise.exerciseName,
+      sets: exercise.sets,
+      repsMin: exercise.repsMin,
+      repsMax: exercise.repsMax,
+      intensityValue: exercise.intensityValue,
+    })),
+    completionPercent: sessionCompletionPercent(loggedSetCount, plannedSetCount),
     sessions: rows.map((session) => {
       const sets: LoggedSet[] = session.sets.map((set) => ({
         exerciseName: set.exerciseName,
@@ -442,10 +470,21 @@ export async function createTrainingSet(input: TrainingSetCreateInput) {
     throw new Error("Save a profile before logging training.");
   }
 
-  const exercise = await prisma.exercise.findUnique({ where: { name: input.exerciseName } });
+  const plannedExercise = input.plannedExerciseId
+    ? await prisma.plannedExercise.findUnique({ where: { id: input.plannedExerciseId } })
+    : null;
+  const exerciseName = plannedExercise?.exerciseName ?? input.exerciseName?.trim();
 
-  if (!exercise) {
-    throw new Error("Choose an exercise from the library.");
+  if (!exerciseName) {
+    throw new Error("Choose an exercise from the plan or the library.");
+  }
+
+  if (!plannedExercise) {
+    const exercise = await prisma.exercise.findUnique({ where: { name: exerciseName } });
+
+    if (!exercise) {
+      throw new Error("Choose an exercise from the library.");
+    }
   }
 
   const date = new Date(`${input.date}T00:00:00`);
@@ -470,11 +509,12 @@ export async function createTrainingSet(input: TrainingSetCreateInput) {
   await prisma.exerciseSet.create({
     data: {
       trainingSessionId: session.id,
-      exerciseName: exercise.name,
+      exerciseName,
       setNumber: session.sets.length + 1,
       reps: input.reps,
       weightKg: input.weightKg,
       rpe: input.rpe,
+      plannedExerciseId: plannedExercise?.id,
     },
   });
 

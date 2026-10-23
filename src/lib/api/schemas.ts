@@ -87,7 +87,11 @@ export const programGenerateSchema = z.object({
 
 export const trainingSetCreateSchema = z.object({
   date: dateStringSchema,
-  exerciseName: z.string().trim().min(1),
+  exerciseName: z.string().trim().optional(),
+  plannedExerciseId: z.preprocess(
+    (value) => (value === "" || value == null ? undefined : value),
+    z.string().trim().min(1).optional(),
+  ),
   reps: z.coerce.number().int().positive(),
   weightKg: optionalNumber(0),
   rpe: optionalNumber(0, 10),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateE1rm, calculateTrainingVolume } from "@/lib/domain/training";
+import { calculateE1rm, calculateTrainingVolume, sessionCompletionPercent } from "@/lib/domain/training";
 
 describe("training calculations", () => {
   it("estimates e1RM with the Epley formula", () => {
@@ -18,5 +18,11 @@ describe("training calculations", () => {
         ],
       }),
     ).toBe(1000);
+  });
+
+  it("compares logged sets with the planned set count", () => {
+    expect(sessionCompletionPercent(2, 4)).toBe(50);
+    expect(sessionCompletionPercent(5, 4)).toBe(100);
+    expect(sessionCompletionPercent(0, 0)).toBeNull();
   });
 });

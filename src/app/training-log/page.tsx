@@ -21,7 +21,7 @@ export default async function TrainingLogPage() {
     return <DataError message={result.message} />;
   }
 
-  const { date, sessions, exercises } = result.data;
+  const { date, sessions, exercises, plannedExercises, completionPercent } = result.data;
   const workingSets = sessions.reduce((total, session) => total + session.workingSets, 0);
   const volumeKg = sessions.reduce((total, session) => total + session.volumeKg, 0);
   const durationMin = sessions.reduce((total, session) => total + (session.durationMin ?? 0), 0);
@@ -33,13 +33,35 @@ export default async function TrainingLogPage() {
           <h2 className="mt-3 text-3xl font-semibold">
             {sessions.length > 0 ? sessions.map((session) => session.title).join(", ") : "No session"}
           </h2>
-          <p className="mt-3 text-sm text-slate-400">Sessions stored for {date}.</p>
+          <p className="mt-3 text-sm text-slate-400">
+            Sessions stored for {date}.
+            {completionPercent == null ? "" : ` Plan completion ${completionPercent}%.`}
+          </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <StatCard label="Working sets" value={workingSets} />
             <StatCard label="Volume" value={`${volumeKg} kg`} />
             <StatCard label="Duration" value={`${durationMin} min`} />
           </div>
         </section>
+
+        {plannedExercises.length > 0 ? (
+          <section className="mt-8 rounded-[2rem] border border-white/10 p-6">
+            <h3 className="text-xl font-semibold">Today&apos;s plan</h3>
+            <div className="mt-4 space-y-3">
+              {plannedExercises.map((exercise) => (
+                <div
+                  key={exercise.id}
+                  className="flex flex-col gap-1 rounded-2xl bg-white/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <span className="font-medium text-white">{exercise.exerciseName}</span>
+                  <span className="text-sm text-slate-300">
+                    {exercise.sets} x {exercise.repsMin}-{exercise.repsMax} @ RPE {exercise.intensityValue}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <form
           action={createTrainingSetAction}
@@ -53,16 +75,30 @@ export default async function TrainingLogPage() {
             </label>
             <label className={`${labelClass} md:col-span-2`}>
               Exercise
-              <select name="exerciseName" className={inputClass} required defaultValue="">
-                <option value="" disabled>
-                  Choose an exercise
-                </option>
-                {exercises.map((exercise) => (
-                  <option key={exercise.name} value={exercise.name}>
-                    {exercise.name} ({exercise.primaryMuscle})
+              {plannedExercises.length > 0 ? (
+                <select name="plannedExerciseId" className={inputClass} required defaultValue="">
+                  <option value="" disabled>
+                    Choose a planned exercise
                   </option>
-                ))}
-              </select>
+                  {plannedExercises.map((exercise) => (
+                    <option key={exercise.id} value={exercise.id}>
+                      {exercise.exerciseName} {exercise.sets} x {exercise.repsMin}-{exercise.repsMax} RPE{" "}
+                      {exercise.intensityValue}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select name="exerciseName" className={inputClass} required defaultValue="">
+                  <option value="" disabled>
+                    Choose an exercise
+                  </option>
+                  {exercises.map((exercise) => (
+                    <option key={exercise.name} value={exercise.name}>
+                      {exercise.name} ({exercise.primaryMuscle})
+                    </option>
+                  ))}
+                </select>
+              )}
             </label>
             <label className={labelClass}>
               Reps
