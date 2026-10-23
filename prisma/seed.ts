@@ -170,6 +170,27 @@ async function main() {
     });
   }
 
+  const exercises = [
+    ["Barbell Bench Press", "chest", "horizontal push", "barbell"],
+    ["Incline Dumbbell Press", "chest", "horizontal push", "dumbbell"],
+    ["Overhead Press", "shoulders", "vertical push", "barbell"],
+    ["Barbell Row", "back", "horizontal pull", "barbell"],
+    ["Pull-up", "back", "vertical pull", "bodyweight"],
+    ["Back Squat", "quads", "squat", "barbell"],
+    ["Romanian Deadlift", "hamstrings", "hinge", "barbell"],
+    ["Conventional Deadlift", "posterior chain", "hinge", "barbell"],
+    ["Walking Lunge", "quads", "lunge", "dumbbell"],
+    ["Lateral Raise", "shoulders", "raise", "dumbbell"],
+  ] as const;
+
+  for (const [name, primaryMuscle, movementPattern, equipment] of exercises) {
+    await prisma.exercise.upsert({
+      where: { name },
+      update: { primaryMuscle, movementPattern, equipment },
+      create: { name, primaryMuscle, movementPattern, equipment },
+    });
+  }
+
   await prisma.trainingSession.upsert({
     where: { id: "demo-training" },
     update: {},

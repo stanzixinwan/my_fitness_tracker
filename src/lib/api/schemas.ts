@@ -80,6 +80,14 @@ export const profileUpdateSchema = z.object({
   notes: optionalTextSchema,
 });
 
+export const trainingSetCreateSchema = z.object({
+  date: dateStringSchema,
+  exerciseName: z.string().trim().min(1),
+  reps: z.coerce.number().int().positive(),
+  weightKg: optionalNumber(0),
+  rpe: optionalNumber(0, 10),
+});
+
 export const foodEntryCreateSchema = z.object({
   date: dateStringSchema,
   mealType: z.enum(["breakfast", "lunch", "dinner", "snack"]),
@@ -95,6 +103,7 @@ export const foodEntryCreateSchema = z.object({
 
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 export type FoodEntryCreateInput = z.infer<typeof foodEntryCreateSchema>;
+export type TrainingSetCreateInput = z.infer<typeof trainingSetCreateSchema>;
 
 export type ApiSuccess<T> = {
   status: "ok";

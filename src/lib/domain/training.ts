@@ -12,6 +12,18 @@ export type TrainingSessionInput = {
   sets: ExerciseSetInput[];
 };
 
+export function calculateE1rm(weightKg: number, reps: number) {
+  if (weightKg <= 0 || reps <= 0) {
+    return null;
+  }
+
+  if (reps === 1) {
+    return Math.round(weightKg * 10) / 10;
+  }
+
+  return Math.round(weightKg * (1 + reps / 30) * 10) / 10;
+}
+
 export function calculateTrainingVolume(session: TrainingSessionInput) {
   return session.sets.reduce((total, set) => {
     return total + set.reps * (set.weightKg ?? 0);

@@ -162,6 +162,14 @@ model FoodEntry {
   @@index([userId, eatenAt])
 }
 
+model Exercise {
+  id               String @id @default(cuid())
+  name             String @unique
+  primaryMuscle    String
+  movementPattern  String
+  equipment        String
+}
+
 model TrainingSession {
   id          String        @id @default(cuid())
   userId      String

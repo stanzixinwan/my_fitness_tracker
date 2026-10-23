@@ -2,8 +2,10 @@
 import {
   foodEntryCreateSchema,
   profileUpdateSchema,
+  trainingSetCreateSchema,
   type FoodEntryCreateInput,
   type ProfileUpdateInput,
+  type TrainingSetCreateInput,
 } from "@/lib/api/schemas";
 import { localDateString, localDayRange } from "@/lib/dates";
 import { averageLatestWeights, calculateLeanBodyMassKg } from "@/lib/domain/body";
@@ -19,7 +21,9 @@ import {
   type Sex,
 } from "@/lib/domain/nutrition";
 import {
+  calculateE1rm,
   summarizeTraining,
+  type ExerciseSetInput,
   type TrainingSessionInput,
 } from "@/lib/domain/training";
 import { localUserId } from "@/lib/db/local-user";
@@ -161,15 +165,28 @@ export type FoodLogData = {
   remaining: NutritionTotals | null;
 };
 
-export type TrainingSessionRecord = TrainingSessionInput & {
+export type LoggedSet = ExerciseSetInput & {
+  e1rmKg: number | null;
+};
+
+export type TrainingSessionRecord = Omit<TrainingSessionInput, "sets"> & {
   id: string;
   volumeKg: number;
   workingSets: number;
+  sets: LoggedSet[];
+};
+
+export type ExerciseOption = {
+  name: string;
+  primaryMuscle: string;
+  movementPattern: string;
+  equipment: string;
 };
 
 export type TrainingLogData = {
   date: string;
   sessions: TrainingSessionRecord[];
+  exercises: ExerciseOption[];
 };
 
 const emptyDietPreference: DietPreferenceFields = {
@@ -318,7 +335,6 @@ export async function getProfileData(): Promise<ProfileData> {
 
 export async function getFoodLogData(date = localDateString()): Promise<FoodLogData> {
   const prisma = requirePrisma();
-  const profileData = await getProfileData();
   const range = localDayRange(date);
   const rows = await prisma.foodEntry.findMany({
     where: {
@@ -368,7 +384,8 @@ export async function getFoodLogData(date = localDateString()): Promise<FoodLogD
 export async function getTrainingLogData(date = localDateString()): Promise<TrainingLogData> {
   const prisma = requirePrisma();
   const range = localDayRange(date);
-  const rows = await prisma.trainingSession.findMany({
+  const [rows, exercises] = await Promise.all([
+    prisma.trainingSession.findMany({
     where: {
       userId: localUserId,
       date: range,
@@ -377,32 +394,99 @@ export async function getTrainingLogData(date = localDateString()): Promise<Trai
       sets: { orderBy: { setNumber: "asc" } },
     },
     orderBy: { date: "asc" },
-  });
+    }),
+    prisma.exercise.findMany({ orderBy: { name: "asc" } }),
+  ]);
 
   return {
     date,
+    exercises: exercises.map((exercise) => ({
+      name: exercise.name,
+      primaryMuscle: exercise.primaryMuscle,
+      movementPattern: exercise.movementPattern,
+      equipment: exercise.equipment,
+    })),
     sessions: rows.map((session) => {
-      const input: TrainingSessionInput = {
+      const sets: LoggedSet[] = session.sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        reps: set.reps,
+        weightKg: set.weightKg ?? undefined,
+        rpe: set.rpe ?? undefined,
+        e1rmKg: set.weightKg == null ? null : calculateE1rm(set.weightKg, set.reps),
+      }));
+      const summary = summarizeTraining({
         title: session.title,
         type: session.type,
         durationMin: session.durationMin ?? undefined,
-        sets: session.sets.map((set) => ({
-          exerciseName: set.exerciseName,
-          reps: set.reps,
-          weightKg: set.weightKg ?? undefined,
-          rpe: set.rpe ?? undefined,
-        })),
-      };
-      const summary = summarizeTraining(input);
+        sets,
+      });
 
       return {
         id: session.id,
-        ...input,
+        title: session.title,
+        type: session.type,
+        durationMin: session.durationMin ?? undefined,
+        sets,
         volumeKg: summary.volumeKg,
         workingSets: summary.workingSets,
       };
     }),
   };
+}
+
+export async function createTrainingSet(input: TrainingSetCreateInput) {
+  const prisma = requirePrisma();
+  const user = await prisma.userProfile.findUnique({ where: { id: localUserId } });
+
+  if (!user) {
+    throw new Error("Save a profile before logging training.");
+  }
+
+  const exercise = await prisma.exercise.findUnique({ where: { name: input.exerciseName } });
+
+  if (!exercise) {
+    throw new Error("Choose an exercise from the library.");
+  }
+
+  const date = new Date(`${input.date}T00:00:00`);
+  const range = localDayRange(input.date);
+  const existing = await prisma.trainingSession.findFirst({
+    where: { userId: localUserId, date: range },
+    include: { sets: true },
+    orderBy: { date: "asc" },
+  });
+  const session =
+    existing ??
+    (await prisma.trainingSession.create({
+      data: {
+        userId: localUserId,
+        date,
+        title: "Training",
+        type: "strength",
+      },
+      include: { sets: true },
+    }));
+
+  await prisma.exerciseSet.create({
+    data: {
+      trainingSessionId: session.id,
+      exerciseName: exercise.name,
+      setNumber: session.sets.length + 1,
+      reps: input.reps,
+      weightKg: input.weightKg,
+      rpe: input.rpe,
+    },
+  });
+
+  return getTrainingLogData(input.date);
+}
+
+export async function createTrainingSetFromForm(formData: FormData) {
+  const input = trainingSetCreateSchema.parse(formDataToRecord(formData));
+  await createTrainingSet(input);
+
+  revalidatePath("/");
+  revalidatePath("/training-log");
 }
 
 export async function updateProfile(input: ProfileUpdateInput) {
