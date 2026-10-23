@@ -80,6 +80,11 @@ export const profileUpdateSchema = z.object({
   notes: optionalTextSchema,
 });
 
+export const programGenerateSchema = z.object({
+  startDate: dateStringSchema,
+  daysPerWeek: z.coerce.number().int().min(3).max(6),
+});
+
 export const trainingSetCreateSchema = z.object({
   date: dateStringSchema,
   exerciseName: z.string().trim().min(1),
@@ -104,6 +109,7 @@ export const foodEntryCreateSchema = z.object({
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 export type FoodEntryCreateInput = z.infer<typeof foodEntryCreateSchema>;
 export type TrainingSetCreateInput = z.infer<typeof trainingSetCreateSchema>;
+export type ProgramGenerateInput = z.infer<typeof programGenerateSchema>;
 
 export type ApiSuccess<T> = {
   status: "ok";

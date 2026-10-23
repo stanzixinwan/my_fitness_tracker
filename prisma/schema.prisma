@@ -51,6 +51,20 @@ enum TrainingStatus {
   MISSED
 }
 
+enum ProgramLevel {
+  YEAR
+  MONTH
+  WEEK
+}
+
+enum PhaseType {
+  MUSCLE_GAIN
+  STRENGTH
+  FAT_LOSS
+  MAINTENANCE
+  DELOAD
+}
+
 model UserProfile {
   id                  String           @id @default(cuid())
   displayName         String
@@ -72,6 +86,8 @@ model UserProfile {
   foodEntries         FoodEntry[]
   trainingSessions    TrainingSession[]
   nutritionTargets    NutritionTarget[]
+  programs            Program[]
+  plannedSessions     PlannedSession[]
 }
 
 model BodyMetric {
@@ -211,4 +227,50 @@ model NutritionTarget {
   user          UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, effectiveDate])
+}
+
+model Program {
+  id        String         @id @default(cuid())
+  userId    String
+  parentId  String?
+  level     ProgramLevel
+  phaseType PhaseType
+  title     String
+  startDate DateTime
+  endDate   DateTime
+  user      UserProfile    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Program?       @relation("ProgramTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Program[]      @relation("ProgramTree")
+  sessions  PlannedSession[]
+
+  @@index([userId, startDate])
+}
+
+model PlannedSession {
+  id         String            @id @default(cuid())
+  userId     String
+  programId  String
+  date       DateTime
+  theme      String
+  user       UserProfile       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program    Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  exercises  PlannedExercise[]
+
+  @@index([userId, date])
+}
+
+model PlannedExercise {
+  id               String         @id @default(cuid())
+  plannedSessionId String
+  exerciseName     String
+  sortOrder        Int
+  sets             Int
+  repsMin          Int
+  repsMax          Int
+  intensityType    String
+  intensityValue   Float
+  restSeconds      Int
+  session          PlannedSession @relation(fields: [plannedSessionId], references: [id], onDelete: Cascade)
+
+  @@index([plannedSessionId, sortOrder])
 }
