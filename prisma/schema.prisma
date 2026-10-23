@@ -51,6 +51,20 @@ enum TrainingStatus {
   MISSED
 }
 
+enum ProgramLevel {
+  YEAR
+  MONTH
+  WEEK
+}
+
+enum PhaseType {
+  MUSCLE_GAIN
+  STRENGTH
+  FAT_LOSS
+  MAINTENANCE
+  DELOAD
+}
+
 model UserProfile {
   id                  String           @id @default(cuid())
   displayName         String
@@ -71,6 +85,10 @@ model UserProfile {
   dailyLogs           DailyLog[]
   foodEntries         FoodEntry[]
   trainingSessions    TrainingSession[]
+  nutritionTargets    NutritionTarget[]
+  programs            Program[]
+  plannedSessions     PlannedSession[]
+  adjustmentLogs      AdjustmentLog[]
 }
 
 model BodyMetric {
@@ -161,6 +179,14 @@ model FoodEntry {
   @@index([userId, eatenAt])
 }
 
+model Exercise {
+  id               String @id @default(cuid())
+  name             String @unique
+  primaryMuscle    String
+  movementPattern  String
+  equipment        String
+}
+
 model TrainingSession {
   id          String        @id @default(cuid())
   userId      String
@@ -184,7 +210,87 @@ model ExerciseSet {
   weightKg          Float?
   rpe               Float?
   note              String?
+  plannedExerciseId String?
   trainingSession   TrainingSession @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
+  plannedExercise   PlannedExercise? @relation(fields: [plannedExerciseId], references: [id], onDelete: SetNull)
 
   @@index([trainingSessionId, exerciseName])
+}
+
+model NutritionTarget {
+  id            String      @id @default(cuid())
+  userId        String
+  effectiveDate DateTime
+  calories      Float
+  proteinG      Float
+  carbsG        Float
+  fatG          Float
+  formula       String
+  createdAt     DateTime    @default(now())
+  user          UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, effectiveDate])
+}
+
+model Program {
+  id        String         @id @default(cuid())
+  userId    String
+  parentId  String?
+  level     ProgramLevel
+  phaseType PhaseType
+  title     String
+  startDate DateTime
+  endDate   DateTime
+  user      UserProfile    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Program?       @relation("ProgramTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Program[]      @relation("ProgramTree")
+  sessions  PlannedSession[]
+
+  @@index([userId, startDate])
+}
+
+model PlannedSession {
+  id         String            @id @default(cuid())
+  userId     String
+  programId  String
+  date       DateTime
+  theme      String
+  user       UserProfile       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program    Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  exercises  PlannedExercise[]
+
+  @@index([userId, date])
+}
+
+model PlannedExercise {
+  id               String         @id @default(cuid())
+  plannedSessionId String
+  exerciseName     String
+  sortOrder        Int
+  sets             Int
+  repsMin          Int
+  repsMax          Int
+  intensityType    String
+  intensityValue   Float
+  restSeconds      Int
+  targetWeightKg   Float?
+  session          PlannedSession @relation(fields: [plannedSessionId], references: [id], onDelete: Cascade)
+  loggedSets       ExerciseSet[]
+
+  @@index([plannedSessionId, sortOrder])
+}
+
+model AdjustmentLog {
+  id          String      @id @default(cuid())
+  userId      String
+  date        DateTime
+  reason      String
+  field       String
+  subject     String
+  beforeValue String
+  afterValue  String
+  createdAt   DateTime    @default(now())
+  user        UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

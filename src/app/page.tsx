@@ -65,8 +65,14 @@ export default async function Home() {
                 value={session ? session.title : "None"}
                 detail={
                   session
-                    ? `${session.workingSets} sets, ${session.volumeKg} kg`
-                    : "No training logged today"
+                    ? `${session.workingSets} sets, ${session.volumeKg} kg${
+                        trainingData.completionPercent == null
+                          ? ""
+                          : `, ${trainingData.completionPercent}% of plan`
+                      }`
+                    : trainingData.completionPercent == null
+                      ? "No training logged today"
+                      : `${trainingData.completionPercent}% of plan`
                 }
               />
             </div>

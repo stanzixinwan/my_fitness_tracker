@@ -2,14 +2,17 @@
 import {
   foodEntryCreateSchema,
   profileUpdateSchema,
+  trainingSetCreateSchema,
   type FoodEntryCreateInput,
   type ProfileUpdateInput,
+  type TrainingSetCreateInput,
 } from "@/lib/api/schemas";
 import { localDateString, localDayRange } from "@/lib/dates";
 import { averageLatestWeights, calculateLeanBodyMassKg } from "@/lib/domain/body";
 import {
   calculateMacroTargets,
   calculateRemainingNutrition,
+  nutritionFormula,
   sumNutrition,
   type ActivityLevel,
   type GoalInput,
@@ -18,7 +21,10 @@ import {
   type Sex,
 } from "@/lib/domain/nutrition";
 import {
+  calculateE1rm,
+  sessionCompletionPercent,
   summarizeTraining,
+  type ExerciseSetInput,
   type TrainingSessionInput,
 } from "@/lib/domain/training";
 import { localUserId } from "@/lib/db/local-user";
@@ -160,15 +166,40 @@ export type FoodLogData = {
   remaining: NutritionTotals | null;
 };
 
-export type TrainingSessionRecord = TrainingSessionInput & {
+export type LoggedSet = ExerciseSetInput & {
+  e1rmKg: number | null;
+};
+
+export type TrainingSessionRecord = Omit<TrainingSessionInput, "sets"> & {
   id: string;
   volumeKg: number;
   workingSets: number;
+  sets: LoggedSet[];
+};
+
+export type ExerciseOption = {
+  name: string;
+  primaryMuscle: string;
+  movementPattern: string;
+  equipment: string;
+};
+
+export type PlannedExerciseOption = {
+  id: string;
+  exerciseName: string;
+  sets: number;
+  repsMin: number;
+  repsMax: number;
+  intensityValue: number;
+  targetWeightKg: number | null;
 };
 
 export type TrainingLogData = {
   date: string;
   sessions: TrainingSessionRecord[];
+  exercises: ExerciseOption[];
+  plannedExercises: PlannedExerciseOption[];
+  completionPercent: number | null;
 };
 
 const emptyDietPreference: DietPreferenceFields = {
@@ -317,7 +348,6 @@ export async function getProfileData(): Promise<ProfileData> {
 
 export async function getFoodLogData(date = localDateString()): Promise<FoodLogData> {
   const prisma = requirePrisma();
-  const profileData = await getProfileData();
   const range = localDayRange(date);
   const rows = await prisma.foodEntry.findMany({
     where: {
@@ -338,26 +368,21 @@ export async function getFoodLogData(date = localDateString()): Promise<FoodLogD
     fatG: entry.fatG,
   }));
   const consumed = sumNutrition(foodEntries);
-  const { profile, latestBodyMetric, activeGoal } = profileData;
-  const canCalculateTargets =
-    profile.heightCm != null &&
-    latestBodyMetric.weightKg != null &&
-    activeGoal != null;
-
-  const targets = canCalculateTargets
-    ? calculateMacroTargets(
-        {
-          sex: profile.sex,
-          birthYear: profile.birthYear ?? undefined,
-          heightCm: profile.heightCm as number,
-          weightKg: latestBodyMetric.weightKg as number,
-          activityLevel: profile.activityLevel,
-        },
-        {
-          type: activeGoal.type,
-          weeklyWeightDeltaKg: activeGoal.weeklyWeightDeltaKg ?? undefined,
-        },
-      )
+  const day = localDayRange(date);
+  const storedTarget = await prisma.nutritionTarget.findFirst({
+    where: {
+      userId: localUserId,
+      effectiveDate: { lt: day.lt },
+    },
+    orderBy: [{ effectiveDate: "desc" }, { createdAt: "desc" }],
+  });
+  const targets = storedTarget
+    ? {
+        calories: storedTarget.calories,
+        proteinG: storedTarget.proteinG,
+        carbsG: storedTarget.carbsG,
+        fatG: storedTarget.fatG,
+      }
     : null;
 
   return {
@@ -372,7 +397,8 @@ export async function getFoodLogData(date = localDateString()): Promise<FoodLogD
 export async function getTrainingLogData(date = localDateString()): Promise<TrainingLogData> {
   const prisma = requirePrisma();
   const range = localDayRange(date);
-  const rows = await prisma.trainingSession.findMany({
+  const [rows, exercises, planned] = await Promise.all([
+    prisma.trainingSession.findMany({
     where: {
       userId: localUserId,
       date: range,
@@ -381,32 +407,128 @@ export async function getTrainingLogData(date = localDateString()): Promise<Trai
       sets: { orderBy: { setNumber: "asc" } },
     },
     orderBy: { date: "asc" },
-  });
+    }),
+    prisma.exercise.findMany({ orderBy: { name: "asc" } }),
+    prisma.plannedSession.findFirst({
+      where: { userId: localUserId, date: range },
+      include: { exercises: { orderBy: { sortOrder: "asc" } } },
+    }),
+  ]);
+  const plannedExercises = planned?.exercises ?? [];
+  const plannedSetCount = plannedExercises.reduce((total, exercise) => total + exercise.sets, 0);
+  const loggedSetCount = rows.reduce((total, session) => total + session.sets.length, 0);
 
   return {
     date,
+    exercises: exercises.map((exercise) => ({
+      name: exercise.name,
+      primaryMuscle: exercise.primaryMuscle,
+      movementPattern: exercise.movementPattern,
+      equipment: exercise.equipment,
+    })),
+    plannedExercises: plannedExercises.map((exercise) => ({
+      id: exercise.id,
+      exerciseName: exercise.exerciseName,
+      sets: exercise.sets,
+      repsMin: exercise.repsMin,
+      repsMax: exercise.repsMax,
+      intensityValue: exercise.intensityValue,
+      targetWeightKg: exercise.targetWeightKg,
+    })),
+    completionPercent: sessionCompletionPercent(loggedSetCount, plannedSetCount),
     sessions: rows.map((session) => {
-      const input: TrainingSessionInput = {
+      const sets: LoggedSet[] = session.sets.map((set) => ({
+        exerciseName: set.exerciseName,
+        reps: set.reps,
+        weightKg: set.weightKg ?? undefined,
+        rpe: set.rpe ?? undefined,
+        e1rmKg: set.weightKg == null ? null : calculateE1rm(set.weightKg, set.reps),
+      }));
+      const summary = summarizeTraining({
         title: session.title,
         type: session.type,
         durationMin: session.durationMin ?? undefined,
-        sets: session.sets.map((set) => ({
-          exerciseName: set.exerciseName,
-          reps: set.reps,
-          weightKg: set.weightKg ?? undefined,
-          rpe: set.rpe ?? undefined,
-        })),
-      };
-      const summary = summarizeTraining(input);
+        sets,
+      });
 
       return {
         id: session.id,
-        ...input,
+        title: session.title,
+        type: session.type,
+        durationMin: session.durationMin ?? undefined,
+        sets,
         volumeKg: summary.volumeKg,
         workingSets: summary.workingSets,
       };
     }),
   };
+}
+
+export async function createTrainingSet(input: TrainingSetCreateInput) {
+  const prisma = requirePrisma();
+  const user = await prisma.userProfile.findUnique({ where: { id: localUserId } });
+
+  if (!user) {
+    throw new Error("Save a profile before logging training.");
+  }
+
+  const plannedExercise = input.plannedExerciseId
+    ? await prisma.plannedExercise.findUnique({ where: { id: input.plannedExerciseId } })
+    : null;
+  const exerciseName = plannedExercise?.exerciseName ?? input.exerciseName?.trim();
+
+  if (!exerciseName) {
+    throw new Error("Choose an exercise from the plan or the library.");
+  }
+
+  if (!plannedExercise) {
+    const exercise = await prisma.exercise.findUnique({ where: { name: exerciseName } });
+
+    if (!exercise) {
+      throw new Error("Choose an exercise from the library.");
+    }
+  }
+
+  const date = new Date(`${input.date}T00:00:00`);
+  const range = localDayRange(input.date);
+  const existing = await prisma.trainingSession.findFirst({
+    where: { userId: localUserId, date: range },
+    include: { sets: true },
+    orderBy: { date: "asc" },
+  });
+  const session =
+    existing ??
+    (await prisma.trainingSession.create({
+      data: {
+        userId: localUserId,
+        date,
+        title: "Training",
+        type: "strength",
+      },
+      include: { sets: true },
+    }));
+
+  await prisma.exerciseSet.create({
+    data: {
+      trainingSessionId: session.id,
+      exerciseName,
+      setNumber: session.sets.length + 1,
+      reps: input.reps,
+      weightKg: input.weightKg,
+      rpe: input.rpe,
+      plannedExerciseId: plannedExercise?.id,
+    },
+  });
+
+  return getTrainingLogData(input.date);
+}
+
+export async function createTrainingSetFromForm(formData: FormData) {
+  const input = trainingSetCreateSchema.parse(formDataToRecord(formData));
+  await createTrainingSet(input);
+
+  revalidatePath("/");
+  revalidatePath("/training-log");
 }
 
 export async function updateProfile(input: ProfileUpdateInput) {
@@ -491,6 +613,29 @@ export async function updateProfile(input: ProfileUpdateInput) {
       startDate: metricDate,
       endDate: input.goalEndDate ? new Date(`${input.goalEndDate}T00:00:00`) : null,
       isActive: true,
+    },
+  });
+
+  const biometrics = {
+    sex: input.sex,
+    birthYear,
+    heightCm: input.heightCm,
+    weightKg: input.weightKg,
+    activityLevel: input.activityLevel,
+    bodyFatPercent: input.bodyFatPercent ?? undefined,
+    leanBodyMassKg: leanBodyMassKg ?? undefined,
+  };
+  const targets = calculateMacroTargets(biometrics, { type: input.goalType });
+
+  await prisma.nutritionTarget.create({
+    data: {
+      userId: localUserId,
+      effectiveDate: metricDate,
+      calories: targets.calories,
+      proteinG: targets.proteinG,
+      carbsG: targets.carbsG,
+      fatG: targets.fatG,
+      formula: nutritionFormula(biometrics),
     },
   });
 
