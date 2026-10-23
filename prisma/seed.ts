@@ -2,6 +2,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { localUserId } from "../src/lib/db/local-user";
+import { calculateMacroTargets, nutritionFormula } from "../src/lib/domain/nutrition";
 
 const metricDate = new Date("2026-04-30T00:00:00");
 
@@ -64,6 +65,30 @@ async function main() {
       startDate: metricDate,
       endDate: new Date("2026-08-01T00:00:00"),
       isActive: true,
+    },
+  });
+
+  const seedBiometrics = {
+    sex: "male" as const,
+    birthYear: 1996,
+    heightCm: 178,
+    weightKg: 78.4,
+    activityLevel: "moderate" as const,
+    bodyFatPercent: 18.5,
+    leanBodyMassKg: 63.9,
+  };
+  const seedTargets = calculateMacroTargets(seedBiometrics, { type: "recomposition" });
+
+  await prisma.nutritionTarget.deleteMany({ where: { userId: localUserId } });
+  await prisma.nutritionTarget.create({
+    data: {
+      userId: localUserId,
+      effectiveDate: metricDate,
+      calories: seedTargets.calories,
+      proteinG: seedTargets.proteinG,
+      carbsG: seedTargets.carbsG,
+      fatG: seedTargets.fatG,
+      formula: nutritionFormula(seedBiometrics),
     },
   });
 

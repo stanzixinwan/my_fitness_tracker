@@ -71,6 +71,7 @@ model UserProfile {
   dailyLogs           DailyLog[]
   foodEntries         FoodEntry[]
   trainingSessions    TrainingSession[]
+  nutritionTargets    NutritionTarget[]
 }
 
 model BodyMetric {
@@ -187,4 +188,19 @@ model ExerciseSet {
   trainingSession   TrainingSession @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
 
   @@index([trainingSessionId, exerciseName])
+}
+
+model NutritionTarget {
+  id            String      @id @default(cuid())
+  userId        String
+  effectiveDate DateTime
+  calories      Float
+  proteinG      Float
+  carbsG        Float
+  fatG          Float
+  formula       String
+  createdAt     DateTime    @default(now())
+  user          UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, effectiveDate])
 }

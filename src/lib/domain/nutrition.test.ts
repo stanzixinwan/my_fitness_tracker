@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateBmr,
   calculateMacroTargets,
   calculateRemainingNutrition,
   calculateTdee,
@@ -31,9 +32,15 @@ describe("nutrition calculations", () => {
     ]);
     const remaining = calculateRemainingNutrition(targets, consumed);
 
-    expect(targets.calories).toBe(2324);
-    expect(targets.proteinG).toBe(156);
+    expect(targets.calories).toBe(2167);
+    expect(targets.proteinG).toBe(172);
     expect(consumed.calories).toBe(1200);
-    expect(remaining.proteinG).toBe(76);
+    expect(remaining.proteinG).toBe(92);
+  });
+
+  it("uses Katch-McArdle when body fat is available", () => {
+    const bmr = calculateBmr({ ...biometrics, bodyFatPercent: 20 });
+
+    expect(bmr).toBe(Math.round(370 + 21.6 * 62.4));
   });
 });
