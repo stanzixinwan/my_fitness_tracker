@@ -45,11 +45,11 @@ export default async function ProfilePage() {
                 />
               </label>
               <label className={labelClass}>
-                Birth year
+                Birth date
                 <input
-                  name="birthYear"
-                  type="number"
-                  defaultValue={profile.birthYear ?? ""}
+                  name="birthDate"
+                  type="date"
+                  defaultValue={profile.birthDate}
                   className={inputClass}
                   required
                 />
@@ -107,7 +107,14 @@ export default async function ProfilePage() {
                   step="0.1"
                   defaultValue={latestBodyMetric.bodyFatPercent ?? ""}
                   className={inputClass}
-                  required
+                />
+              </label>
+              <label className={labelClass}>
+                Lean mass kg
+                <input
+                  defaultValue={latestBodyMetric.leanBodyMassKg ?? ""}
+                  className={inputClass}
+                  readOnly
                 />
               </label>
               <label className={labelClass}>
@@ -118,7 +125,55 @@ export default async function ProfilePage() {
                   step="0.1"
                   defaultValue={latestBodyMetric.waistCm ?? ""}
                   className={inputClass}
-                  required
+                />
+              </label>
+              <label className={labelClass}>
+                Chest cm
+                <input
+                  name="chestCm"
+                  type="number"
+                  step="0.1"
+                  defaultValue={latestBodyMetric.chestCm ?? ""}
+                  className={inputClass}
+                />
+              </label>
+              <label className={labelClass}>
+                Hip cm
+                <input
+                  name="hipCm"
+                  type="number"
+                  step="0.1"
+                  defaultValue={latestBodyMetric.hipCm ?? ""}
+                  className={inputClass}
+                />
+              </label>
+              <label className={labelClass}>
+                Arm cm
+                <input
+                  name="armCm"
+                  type="number"
+                  step="0.1"
+                  defaultValue={latestBodyMetric.armCm ?? ""}
+                  className={inputClass}
+                />
+              </label>
+              <label className={labelClass}>
+                Thigh cm
+                <input
+                  name="thighCm"
+                  type="number"
+                  step="0.1"
+                  defaultValue={latestBodyMetric.thighCm ?? ""}
+                  className={inputClass}
+                />
+              </label>
+              <label className={labelClass}>
+                Resting heart rate
+                <input
+                  name="restingHeartRate"
+                  type="number"
+                  defaultValue={latestBodyMetric.restingHeartRate ?? ""}
+                  className={inputClass}
                 />
               </label>
               <label className={labelClass}>
@@ -157,6 +212,14 @@ export default async function ProfilePage() {
                   className={`${inputClass} min-h-28`}
                 />
               </label>
+              <label className={`${labelClass} sm:col-span-2`}>
+                Injury history
+                <textarea
+                  name="injuryHistory"
+                  defaultValue={profile.injuryHistory}
+                  className={`${inputClass} min-h-24`}
+                />
+              </label>
             </div>
           </section>
 
@@ -166,12 +229,56 @@ export default async function ProfilePage() {
               {activeGoal?.title ?? "No active goal"}
             </h2>
             <p className="mt-4 text-slate-300">
-              {activeGoal
-                ? `Target weight ${activeGoal.targetWeightKg ?? "—"} kg by ${activeGoal.endDate ?? "—"}`
-                : "No goal is stored for this profile."}
+              Saving a goal deactivates the previous one and keeps it in history.
             </p>
 
             <div className="mt-6 grid gap-4">
+              <label className={labelClass}>
+                Goal
+                <select
+                  name="goalType"
+                  defaultValue={
+                    activeGoal?.type === "muscle_gain" || activeGoal?.type === "maintenance"
+                      ? activeGoal.type
+                      : "fat_loss"
+                  }
+                  className={inputClass}
+                >
+                  <option value="fat_loss">Fat loss</option>
+                  <option value="muscle_gain">Muscle gain</option>
+                  <option value="maintenance">Maintenance</option>
+                </select>
+              </label>
+              <label className={labelClass}>
+                Goal title
+                <input
+                  name="goalTitle"
+                  defaultValue={activeGoal?.title ?? "Fat loss"}
+                  className={inputClass}
+                  required
+                />
+              </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className={labelClass}>
+                  Target weight kg
+                  <input
+                    name="targetWeightKg"
+                    type="number"
+                    step="0.1"
+                    defaultValue={activeGoal?.targetWeightKg ?? ""}
+                    className={inputClass}
+                  />
+                </label>
+                <label className={labelClass}>
+                  Goal end
+                  <input
+                    name="goalEndDate"
+                    type="date"
+                    defaultValue={activeGoal?.endDate ?? ""}
+                    className={inputClass}
+                  />
+                </label>
+              </div>
               <label className={labelClass}>
                 Diet style
                 <input

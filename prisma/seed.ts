@@ -20,6 +20,8 @@ async function main() {
       id: localUserId,
       displayName: "Stan",
       birthYear: 1996,
+      birthDate: new Date("1996-04-12T00:00:00"),
+      injuryHistory: "",
       sex: "MALE",
       heightCm: 178,
       activityLevel: "MODERATE",
@@ -43,7 +45,9 @@ async function main() {
       date: metricDate,
       weightKg: 78.4,
       bodyFatPercent: 18.5,
+      leanBodyMassKg: 63.9,
       waistCm: 84,
+      source: "seed",
     },
   });
 

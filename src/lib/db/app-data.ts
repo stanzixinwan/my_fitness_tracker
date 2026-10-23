@@ -6,6 +6,7 @@ import {
   type ProfileUpdateInput,
 } from "@/lib/api/schemas";
 import { localDateString, localDayRange } from "@/lib/dates";
+import { averageLatestWeights, calculateLeanBodyMassKg } from "@/lib/domain/body";
 import {
   calculateMacroTargets,
   calculateRemainingNutrition,
@@ -77,10 +78,18 @@ const goalFromDb = {
   RECOMPOSITION: "recomposition",
 } as const;
 
+const goalToDb = {
+  fat_loss: "FAT_LOSS",
+  muscle_gain: "MUSCLE_GAIN",
+  maintenance: "MAINTENANCE",
+} as const;
+
 export type ProfileFields = {
   displayName: string;
   sex: Sex;
+  birthDate: string;
   birthYear: number | null;
+  injuryHistory: string;
   heightCm: number | null;
   activityLevel: ActivityLevel;
   trainingExperience: string;
@@ -92,7 +101,14 @@ export type BodyMetricFields = {
   date: string;
   weightKg: number | null;
   bodyFatPercent: number | null;
+  leanBodyMassKg: number | null;
   waistCm: number | null;
+  chestCm: number | null;
+  hipCm: number | null;
+  armCm: number | null;
+  thighCm: number | null;
+  restingHeartRate: number | null;
+  source: string;
 };
 
 export type GoalFields = {
@@ -119,6 +135,7 @@ export type ProfileData = {
   hasProfile: boolean;
   profile: ProfileFields;
   latestBodyMetric: BodyMetricFields;
+  recentWeightAverageKg: number | null;
   activeGoal: GoalFields | null;
   dietPreference: DietPreferenceFields;
 };
@@ -172,7 +189,9 @@ function emptyProfileData(date: string): ProfileData {
     profile: {
       displayName: "",
       sex: "unspecified",
+      birthDate: "",
       birthYear: null,
+      injuryHistory: "",
       heightCm: null,
       activityLevel: "moderate",
       trainingExperience: "",
@@ -183,8 +202,16 @@ function emptyProfileData(date: string): ProfileData {
       date,
       weightKg: null,
       bodyFatPercent: null,
+      leanBodyMassKg: null,
       waistCm: null,
+      chestCm: null,
+      hipCm: null,
+      armCm: null,
+      thighCm: null,
+      restingHeartRate: null,
+      source: "manual",
     },
+    recentWeightAverageKg: null,
     activeGoal: null,
     dietPreference: emptyDietPreference,
   };
@@ -194,13 +221,48 @@ function formDataToRecord(formData: FormData) {
   return Object.fromEntries(formData.entries());
 }
 
+function mapMetric(
+  metric: {
+    date: Date;
+    weightKg: number;
+    bodyFatPercent: number | null;
+    leanBodyMassKg: number | null;
+    waistCm: number | null;
+    chestCm: number | null;
+    hipCm: number | null;
+    armCm: number | null;
+    thighCm: number | null;
+    restingHeartRate: number | null;
+    source: string | null;
+  } | undefined,
+  today: string,
+): BodyMetricFields {
+  if (!metric) {
+    return emptyProfileData(today).latestBodyMetric;
+  }
+
+  return {
+    date: localDateString(metric.date),
+    weightKg: metric.weightKg,
+    bodyFatPercent: metric.bodyFatPercent,
+    leanBodyMassKg: metric.leanBodyMassKg,
+    waistCm: metric.waistCm,
+    chestCm: metric.chestCm,
+    hipCm: metric.hipCm,
+    armCm: metric.armCm,
+    thighCm: metric.thighCm,
+    restingHeartRate: metric.restingHeartRate,
+    source: metric.source ?? "manual",
+  };
+}
+
 export async function getProfileData(): Promise<ProfileData> {
   const prisma = requirePrisma();
   const today = localDateString();
   const user = await prisma.userProfile.findUnique({
     where: { id: localUserId },
     include: {
-      bodyMetrics: { orderBy: { date: "desc" }, take: 1 },
+      bodyMetrics: { orderBy: { date: "desc" }, take: 7 },
       goals: { where: { isActive: true }, orderBy: { priority: "asc" }, take: 1 },
       dietPreference: true,
     },
@@ -219,19 +281,17 @@ export async function getProfileData(): Promise<ProfileData> {
     profile: {
       displayName: user.displayName,
       sex: sexFromDb[user.sex],
+      birthDate: user.birthDate ? localDateString(user.birthDate) : "",
       birthYear: user.birthYear,
+      injuryHistory: user.injuryHistory ?? "",
       heightCm: user.heightCm,
       activityLevel: activityFromDb[user.activityLevel],
       trainingExperience: user.trainingExperience ?? "",
       defaultWakeTime: user.defaultWakeTime ?? "",
       defaultSleepTime: user.defaultSleepTime ?? "",
     },
-    latestBodyMetric: {
-      date: metric ? localDateString(metric.date) : today,
-      weightKg: metric?.weightKg ?? null,
-      bodyFatPercent: metric?.bodyFatPercent ?? null,
-      waistCm: metric?.waistCm ?? null,
-    },
+    latestBodyMetric: mapMetric(metric, today),
+    recentWeightAverageKg: averageLatestWeights(user.bodyMetrics.map((row) => row.weightKg)),
     activeGoal: goal
       ? {
           type: goalFromDb[goal.type],
@@ -352,11 +412,20 @@ export async function getTrainingLogData(date = localDateString()): Promise<Trai
 export async function updateProfile(input: ProfileUpdateInput) {
   const prisma = requirePrisma();
 
+  const birthDate = new Date(`${input.birthDate}T00:00:00`);
+  const birthYear = birthDate.getFullYear();
+  const leanBodyMassKg =
+    input.bodyFatPercent == null
+      ? null
+      : calculateLeanBodyMassKg(input.weightKg, input.bodyFatPercent);
+
   await prisma.userProfile.upsert({
     where: { id: localUserId },
     update: {
       displayName: input.displayName,
-      birthYear: input.birthYear,
+      birthDate,
+      birthYear,
+      injuryHistory: input.injuryHistory,
       sex: sexToDb[input.sex],
       heightCm: input.heightCm,
       activityLevel: activityToDb[input.activityLevel],
@@ -367,7 +436,9 @@ export async function updateProfile(input: ProfileUpdateInput) {
     create: {
       id: localUserId,
       displayName: input.displayName,
-      birthYear: input.birthYear,
+      birthDate,
+      birthYear,
+      injuryHistory: input.injuryHistory,
       sex: sexToDb[input.sex],
       heightCm: input.heightCm,
       activityLevel: activityToDb[input.activityLevel],
@@ -378,6 +449,19 @@ export async function updateProfile(input: ProfileUpdateInput) {
   });
 
   const metricDate = new Date(`${input.metricDate}T00:00:00`);
+  const metricData = {
+    weightKg: input.weightKg,
+    bodyFatPercent: input.bodyFatPercent,
+    leanBodyMassKg,
+    waistCm: input.waistCm,
+    chestCm: input.chestCm,
+    hipCm: input.hipCm,
+    armCm: input.armCm,
+    thighCm: input.thighCm,
+    restingHeartRate:
+      input.restingHeartRate == null ? null : Math.round(input.restingHeartRate),
+    source: "manual",
+  };
 
   await prisma.bodyMetric.upsert({
     where: {
@@ -386,17 +470,27 @@ export async function updateProfile(input: ProfileUpdateInput) {
         date: metricDate,
       },
     },
-    update: {
-      weightKg: input.weightKg,
-      bodyFatPercent: input.bodyFatPercent,
-      waistCm: input.waistCm,
-    },
+    update: metricData,
     create: {
       userId: localUserId,
       date: metricDate,
-      weightKg: input.weightKg,
-      bodyFatPercent: input.bodyFatPercent,
-      waistCm: input.waistCm,
+      ...metricData,
+    },
+  });
+
+  await prisma.goal.updateMany({
+    where: { userId: localUserId, isActive: true },
+    data: { isActive: false },
+  });
+  await prisma.goal.create({
+    data: {
+      userId: localUserId,
+      type: goalToDb[input.goalType],
+      title: input.goalTitle,
+      targetWeightKg: input.targetWeightKg,
+      startDate: metricDate,
+      endDate: input.goalEndDate ? new Date(`${input.goalEndDate}T00:00:00`) : null,
+      isActive: true,
     },
   });
 

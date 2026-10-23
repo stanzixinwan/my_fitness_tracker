@@ -3,7 +3,8 @@ import { foodEntryCreateSchema, profileUpdateSchema } from "@/lib/api/schemas";
 
 const validProfilePayload = {
   displayName: "Stan",
-  birthYear: "1996",
+  birthDate: "1996-04-12",
+  injuryHistory: "Left shoulder irritation in 2024",
   sex: "male",
   heightCm: "178",
   activityLevel: "moderate",
@@ -14,6 +15,15 @@ const validProfilePayload = {
   weightKg: "78.4",
   bodyFatPercent: "18.5",
   waistCm: "84",
+  chestCm: "",
+  hipCm: "96",
+  armCm: "",
+  thighCm: "",
+  restingHeartRate: "58",
+  goalType: "fat_loss",
+  goalTitle: "Slow fat loss",
+  targetWeightKg: "75",
+  goalEndDate: "2026-08-01",
   dietStyle: "high protein",
   allergies: "none",
   avoidedFoods: "fried food, soda",
@@ -29,7 +39,9 @@ describe("API schemas", () => {
   it("coerces profile form-style payloads into typed API input", () => {
     const parsed = profileUpdateSchema.parse(validProfilePayload);
 
-    expect(parsed.birthYear).toBe(1996);
+    expect(parsed.birthDate).toBe("1996-04-12");
+    expect(parsed.restingHeartRate).toBe(58);
+    expect(parsed.chestCm).toBeNull();
     expect(parsed.heightCm).toBe(178);
     expect(parsed.preferredFoods).toEqual(["eggs", "rice", "chicken"]);
   });
